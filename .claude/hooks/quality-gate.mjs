@@ -26,6 +26,27 @@ if (/(^|[\s;&|(])git\s+(-C\s+\S+\s+)?commit\b/.test(cmd) && !/--no-edit\b/.test(
     process.exit(2);
 }
 
+// PRs: GitHub only auto-fills .github/pull_request_template.md in the web UI,
+// so `gh pr create --body ...` would skip it. Enforce the template here, and
+// never let Claude tick the human attestation box.
+const prCmd = cmd.match(/(^|[\s;&|(])gh\s+pr\s+(create|edit)\b/)?.[2];
+if (prCmd) {
+    const bodyFile = cmd.match(/--body-file\s+("[^"]+"|'[^']+'|\S+)/)?.[1]?.replace(/^["']|["']$/g, '');
+    let text = cmd;
+    try { if (bodyFile) text += '\n' + readFileSync(resolve(input.cwd || process.cwd(), bodyFile), 'utf8'); } catch {}
+    const prBlock = (why) => {
+        process.stderr.write(`PR BLOCKED: ${why}\nFollow the "Pull requests" section of CLAUDE.md and .github/pull_request_template.md.\n`);
+        process.exit(2);
+    };
+    if (/\[[xX]\]\s*I am aware this PR was written with AI/.test(text)) prBlock('only a human may tick the attestation box.');
+    if (prCmd === 'create') {
+        const missing = ['Task', 'Objective', 'Testing', 'Notes', 'Attestation'].filter((h) => !new RegExp(`^## ${h}\\s*$`, 'm').test(text));
+        if (missing.length) prBlock(`body is missing section(s): ${missing.join(', ')}.`);
+        if (!/- \[ \] I am aware this PR was written with AI/.test(text)) prBlock('body must include the unticked attestation line, worded exactly as in the template.');
+        if (!/(--label|-l)\s+["']?claude\b/.test(cmd)) prBlock('add the label: --label claude.');
+    }
+}
+
 if (!/(^|[\s;&|(])(git\s+(-C\s+\S+\s+)?push|gh\s+pr\s+(create|merge|ready))\b/.test(cmd)) process.exit(0);
 
 // Work out which checkout is being pushed: an explicit `git -C <dir>` or

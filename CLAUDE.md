@@ -77,7 +77,7 @@ php artisan boost:install     # choose Claude Code; writes .mcp.json, boost.json
 
 ## Pull requests
 
-Every PR uses [.github/pull_request_template.md](.github/pull_request_template.md). Fill in every section:
+Every PR uses [.github/pull_request_template.md](.github/pull_request_template.md). `gh pr create` does not apply it for you: copy the template into the body (a `--body-file` works best) and fill in every section. The hook blocks a `gh pr create` that is missing a section, the unticked attestation line, or `--label claude`, and blocks any `gh pr` command that ticks the box.
 
 - **Task:** what is being done, and why.
 - **Objective:** what we are trying to achieve (the outcome, not the steps).

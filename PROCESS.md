@@ -198,5 +198,19 @@ Every commit Claude makes now starts with `CLAUDE - `, so any commit I make in b
 
 **Reviewed:** *pending*
 
+### 7. The PR template is enforced for the AI, not just suggested
+
+**Branch:** `claude/quality-gate` · **Model:** Opus 5.5 (main session)
+
+**The gap:** GitHub only fills in `.github/pull_request_template.md` in the web UI. When Claude opens a PR with `gh pr create --body ...`, the template is skipped completely, so "remember to use it" depended on memory.
+
+**The fix:** the hook now checks Claude's `gh pr` commands:
+- `gh pr create` is blocked unless the body has all five sections (Task, Objective, Testing, Notes, Attestation), the attestation line exactly as worded and unticked, and `--label claude`. It reads `--body-file` too.
+- Any `gh pr create` or `gh pr edit` that would tick the attestation box is blocked. Only a human ticks it.
+
+**Checks:** four bad cases were blocked with a clear reason (missing section, no label, box ticked on create, box ticked on edit). A valid PR passed through to the full quality gate, which passed.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
