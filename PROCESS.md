@@ -242,5 +242,23 @@ Every commit Claude makes now starts with `CLAUDE - `, so any commit I make in b
 
 **Reviewed:** *pending*
 
+### 10. Specialist agents, documented and reviewed before any code
+
+**Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session); one Sonnet run as the UI agent
+
+I defined four project agents in `.claude/agents/`, each with a named model and only the tools it needs. Then I reviewed and reshaped each one before letting any of them write code.
+
+**What I did, and what I changed after review:**
+- **Code first, by mistake, then undone.** The first pass went straight to code: a Sonnet UI agent built a brand theme, and I started adding Vitest, Playwright and axe. I stopped it. I wanted to see and approve the agents' instructions before they produced anything, so I reverted every code change and reinstalled `node_modules` from the committed lockfile. Copies were kept outside the repo for later.
+- **Product owner:** rewritten. The first draft was effectively a checker of the brief. A product owner should care about buyers, the problem, outcomes, the smallest valuable slice and trust. It now uses the running site in Chrome as a buyer would, treated like real user monitoring (Core Web Vitals, console errors, failed requests, journey friction).
+- **Backend:** added OWASP (broken access control is the top risk: load through the user's relationship, 404 for others' records, tests to prove it), fail fast, validation at every trust boundary, and strong typing. I flagged `strict_types` rather than adding it inconsistently.
+- **Data:** added SQLite's quirks (type affinity, dates as text, collation, limited `ALTER TABLE`) and portability rules. I wrote up SQLite against a production engine in NOTES.md. I don't know which engine Street runs, so that's the first thing I'd confirm.
+- **UI:** brand from two Street sources (the marketing site for the shell, the dashboard for app content), Street's logo vendored, no glassmorphism (neither source has it, which the UI agent's analysis confirmed), full UX ownership (every state designed, Nielsen's heuristics), and strict Tailwind (tokens only, no inline styles or one-off overrides). I checked the existing code; it already follows the rule.
+- **Grilling:** I used Matt Pocock's grilling skill to have the AI question me. My first ask was the product owner's own questions, which exposed that the agent was written as a test admin, not a product owner. That led to the rewrite.
+
+**Checks:** documents only, no code changed. The gate runs on push.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
