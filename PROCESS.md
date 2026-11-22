@@ -276,5 +276,41 @@ I defined four project agents in `.claude/agents/`, each with a named model and 
 
 **Reviewed:** *pending*
 
+### 12. Feature design: grilling session (backend)
+
+**Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session) · **Skill:** Matt Pocock's `grilling`
+
+Before any feature code, I had the AI grill me on the brief and its optional items, in rounds of numbered questions, each with a recommended answer. Every decision went into NOTES.md as I made it. The result is a backend task ([docs/tasks/01-backend-saved-search-alerts.md](docs/tasks/01-backend-saved-search-alerts.md)) with agents, order, data model, behaviour and acceptance tests.
+
+**Where I overruled the AI's recommendations:**
+- **Price and bedrooms as ranges** (it proposed max price and min bedrooms only). Other property sites show a range is key.
+- **Several regions and several property types** (it proposed one of each). It was thinking systemically, not commercially.
+- **No rejecting regions without current homes** (it proposed failing them). An empty result today is why buyers save a search.
+- **Regions as a data-driven multi-select,** like types, so the UI can never offer what the API rejects.
+- **A transactional outbox to SNS** (it proposed an after-commit queued job). That takes alert generation off the write path and removes hot-data contention.
+- **Duplicate checks in the UI as well as the API,** using data the page already has, to save requests.
+
+**Scale notes I added:** batching and digests for mass delivery; many-to-many interest data for analytics; server-side keys for large saved filters instead of long query strings; other fan-out methods for very large subscription sets; alarming and re-runs for failed messages (documented only).
+
+**Next:** a separate grilling session on UI and UX, because this one was backend-focused.
+
+**Checks:** none. Design and documents only.
+
+**Reviewed:** *pending*
+
+### 13. Feature design: grilling session (UI and UX)
+
+**Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session) · **Skill:** `grilling`
+
+A second grilling session on the UI only, because the first one leaned towards the backend. The result is the UI task, [docs/tasks/02-ui-saved-search-alerts.md](docs/tasks/02-ui-saved-search-alerts.md).
+
+**Decisions:** Street's header on every page with a "Welcome back, {name}" greeting; brand tokens on the shell and new pages, with a light swap only on existing pages; pill chips for regions and types; preset range dropdowns from the backend; the existing Search button; "Save this search" with every state designed; inline delete confirmation; alerts on the listing card; a mobile Menu and a Filters panel; "View homes" on saved searches; Vitest, Playwright and axe AA blocking in CI.
+
+**My additions and changes:** the "Welcome back" greeting; an empty search result invites saving (to increase capture); consistent pagination at 15 on every list, rather than the AI's "no pagination on saved searches because of the cap"; and **no Playwright**. The reviewer must be able to get in and run it easily, and Playwright's browser download works against that. Automated accessibility checks move to axe-core inside Vitest, and Playwright is noted as what I'd use on a real project.
+
+**Checks:** none. Design and documents only.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

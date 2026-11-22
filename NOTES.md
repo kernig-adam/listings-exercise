@@ -19,8 +19,8 @@ The short version. The full, time-ordered working is in [PROCESS.md](PROCESS.md)
 
 *Planned. The agent definitions are written; the tooling isn't built yet.*
 
-- **UI testing as seriously as backend testing.** Vitest with Vue Test Utils for component tests, and Playwright for end-to-end flows and basic usability checks (keyboard-only use, focus order, visible labels, error messages).
-- **WCAG 2.2 AA is the minimum.** Automated with axe-core inside the Playwright tests, so an AA violation fails the suite. Automated tools only catch part of WCAG, so I also check by hand with two Chrome extensions:
+- **UI testing as seriously as backend testing.** Vitest with Vue Test Utils for component tests, including basic usability checks (keyboard interaction, focus, visible labels, error messages). Playwright is noted, not used (see the UI section below).
+- **WCAG 2.2 AA is the minimum.** Automated with axe-core inside Vitest, so an AA violation fails the suite. Automated tools only catch part of WCAG, so I also check by hand with two Chrome extensions:
   - **Headers** (heading structure): one `h1`, no skipped levels.
   - **WAVE Evaluation Tool** (WebAIM): contrast, labels, ARIA and structure errors.
 - **Branding from two Street sources,** as Tailwind v4 `@theme` tokens:
@@ -55,9 +55,63 @@ SQLite causes formatting problems: dates stored as text, loose typing, different
 
 **Middle ground I'd propose first:** keep SQLite as the fast local default, and add a **second CI job** that runs the same suite against the production engine as a GitHub Actions service container. That catches engine-specific bugs before merge, at the cost of one extra CI job. Locally, Docker would bring full parity without a manual install. Not built here; noted as the next step.
 
-### Feature
+### Feature: UI and UX
 
-*To be recorded as decisions are made.*
+Decided in a second grilling session, focused on the UI.
+
+- **Street's header on every page:** navy bar, the Street logo linking home, nav for Listings, Saved searches and Alerts (with the unread count), and a **"Welcome back, {name}"** greeting top right, on the cream canvas.
+- **Rebrand scope:** brand tokens on the shell, the new pages and the new filter controls. The existing listing card and detail page get a light token swap only, no layout changes ("not visual polish").
+- **Regions and property types as pill-style chips:** native checkboxes underneath (a `fieldset` and `legend`), so they're accessible with no library.
+- **Price and bedroom ranges as preset dropdowns** ("No min", £50k, £75k… "No max"). The presets come from the backend (data-driven), and each max hides values below the chosen min, so an invalid range can't be picked.
+- **Filters keep the existing "Search" button** and URL-driven state.
+- **"Save this search" next to the results count,** with a plain-words summary of what will be saved. States: disabled with a hint when nothing is filtered, "Already saved ✓", and an inline success message (announced to screen readers) with a link to Saved searches.
+- **Deleting a saved search:** an inline two-step confirmation in place, with no browser dialog. Undo is noted for later.
+- **Alerts reuse the listing card,** with a "New" pill when unread, a "Matched: …" line, and a muted "No longer available" state with no link. The empty state explains alerts and links to saving a search.
+- **Mobile header:** the nav and greeting collapse behind an accessible "Menu" button (`aria-expanded`, closes on Escape). The logo and alerts count stay visible.
+- **Filters in a left-hand panel** beside the results on desktop (property-site standard, echoes Street's dashboard), collapsing to a "Filters" button on mobile.
+- **"View homes" on each saved search** opens the listings page with its filters. It's just the URL, since filters live in the query string.
+- **An empty result invites saving the search:** "No homes match yet. Save this search and we'll alert you when one does." That turns a dead end into capture, the moment the feature exists for.
+- **Consistent pagination:** Alerts and Saved searches both paginate at 15, the same as the listings page, using the existing `Pagination` component.
+- **Placeholder listing photos,** so the cards look like a real property site. They're free-licensed Unsplash images, assigned to listings deterministically by ID in the Resource (no schema change), decorative `alt=""` (they aren't photos of the actual home), sized and lazy-loaded so they don't hurt LCP or CLS. In production, real photos would come from the listing data (an upload or a CDN).
+  - *A licensing check that mattered:* the first set I gathered were iStock images, one with a watermark, and two of the second set turned out to be sponsored iStock results inside Unsplash search. They're identifiable by iStock's 612px preview size. Those aren't free to redistribute in a public repo, so they were excluded. Only images under the Unsplash licence are used, with credits recorded.
+- **Well-structured semantic HTML:** each element means what the content is. Landmarks (`header`, `nav`, `main`, `aside`), ordered headings, lists for results, saved searches and alerts, `article` cards, buttons for actions and links for navigation, labelled forms with `fieldset`/`legend`, `dl` for criteria, `time` for dates, and ARIA only where native HTML falls short. It's the foundation of accessibility, and tests that query by role enforce it.
+- **UI tests:** Vitest for components, and axe-core inside Vitest at WCAG 2.2 AA on every page, both blocking in CI. Manual checks with the Headers and WAVE extensions.
+  - **Playwright: I'd use it, but not here.** On a real project I'd add Playwright for end-to-end flows, real-browser keyboard checks and full axe runs including colour contrast. Here it needs a separate browser download, and **the person reviewing this should be able to get in and use it easily**: `composer install`, `npm install`, run. axe in Vitest keeps automated accessibility checks with no extra setup. jsdom can't measure contrast, so that's covered by the token contrast check and a manual WAVE pass.
+
+### Feature: backend
+
+Decided in a grilling session (the AI questions me, I decide).
+
+- **"Becomes live" = the status changes to live.** That covers publishing a draft, creating a listing already live, and coming back to live after under offer falls through. Edits to an already-live listing (e.g. a price drop) don't alert; that's a separate feature.
+- **Criteria: a price range (min–max), min bedrooms, property type, region.** I've looked at other property sites, and a range is key: a buyer looking at £100k–£200k isn't interested in anything under £100k. All criteria are optional, and matching shares its definition with the search page, so what you see when searching is what you get alerted about.
+- **One alert per home per user,** even if several saved searches match. A unique constraint in the database enforces it. This is the direct answer to Support's "please don't spam people".
+  - *At scale:* with heavy listing churn, generating and sending alerts one at a time won't hold. I'd batch them (e.g. collect matches and send a periodic digest), and could offer buyers a choice of instant or digest. That's a question of how the notification infrastructure is built for mass delivery, not something to build here.
+- **No backfill.** Only listings that go live after a search is saved create alerts. Backfill would flood new users on day one. It's also an abuse risk: a malicious user saving huge numbers of broad searches would trigger a burst of matches against every live listing.
+- **Alerts stored in their own table,** not Laravel's notifications table: a typed model, real foreign keys, a unique constraint, read/unread.
+  - *At scale:* the link between alerts, saved searches and listings becomes a **many-to-many record of interest**, which supports point-in-time analysis both ways: how much interest a property attracts, and which properties a user is interested in.
+- **Saving a search:** a "Save this search" button on the listings page saves the filters currently applied. A **Saved searches** page shows each search's criteria in plain words (e.g. "Liverpool, £100,000–£200,000, 3+ beds") and lets the user delete it.
+- **At least one criterion is required.** An empty search would match every new listing, which is spam by design.
+- **Price and bedrooms are both ranges (min–max),** on the search page and in saved searches, with validation that min ≤ max. Someone who wants a 2-bed flat doesn't want 5-bed houses.
+- **Saving the same search twice tells the user it already exists,** rather than creating a duplicate. It's checked in **the UI as well as the API**: the page already knows the user's saved searches, so it can show "Already saved" without a wasted request. The server still enforces it.
+- **Regions and property types are both data-driven multi-selects.** Type options come from the `PropertyType` enum; region options come from the data (the distinct regions of our branches), never a hard-coded list. The API accepts only those known values, so the UI and API agree.
+  - *Why data-driven is the focus:* most UI → API bugs happen when the front end and back end each keep their own copy of the rules: a hard-coded option the API no longer accepts, a label that drifts from the enum, a region that exists in one list but not the other. Here every option the UI offers comes from the same source the API validates against (the enum, the branches table), sent as props. Add a region or a property type and both sides pick it up at once, with no front-end change and no chance of offering something the API will reject. The same goes for "Already saved": the UI checks against the user's real saved searches, and the API enforces the same rule.
+- **"No homes right now" is not an error.** A buyer can save Newcastle even if no Newcastle homes are live today. The page explains that nothing matches *yet* and that they'll be alerted when something does. Inputs are still checked for shape: whole numbers in range, min ≤ max, known types and regions.
+  - *Where I overruled the AI again:* it proposed rejecting regions with no current listings ("fail fast"). Technically tidy, commercially wrong: an empty result today is exactly why someone saves a search. Fail fast applies to malformed input, not to "no results yet".
+- **Several regions and several property types per search,** stored in join tables (portable SQL, indexable; no JSON columns that behave differently across engines). A buyer might look in Liverpool *and* Newcastle, for detached *or* semi-detached.
+  - *Where I overruled the AI (the first time):* it recommended one property type per search, reasoning systemically (fewer tables, simpler matching). Commercially that's wrong: buyers are interested in several types, and the product should serve how they actually search. I identified and corrected this. It's a reminder that the AI optimises for system simplicity unless someone brings the commercial view.
+- **The search page takes several values too,** comma-separated in the query string (`?region=Liverpool,Newcastle`); old single-value links keep working.
+  - *At scale:* as criteria grow into hundreds of combinations, query strings hit length limits. I'd store a search's filters server-side under a short unique key, so a saved or shared search loads by key and is unpacked server-side, retrievable at scale. Not needed at this size.
+- **One alert per home, across all of a user's searches,** linked to **every** saved search it matched (a many-to-many join table, not polymorphic: alerts are only about listings for now). It's deduplicated, but the buyer still sees which search or searches the home relates to.
+- **20 saved searches per user, and rate-limited saves.** This is an artificial starting limit to bound abuse and matching cost, to be raised as product feedback comes in.
+- **Alerts page:** newest first, unread highlighted, an unread count in the header, marked read on view. Each alert says why it matched, and shows "No longer available" if the home has since gone under offer or sold.
+- **Deleting a saved search keeps its alerts;** only the link to that search goes. Deleting means "stop telling me", not "forget what you told me".
+- **No listing-management screen.** A documented `tinker` one-liner sets a listing live for demos; the feature tests prove the flow.
+- **Transactional outbox for "listing went live".** The status change and an outbox message are written in the **same database transaction**, so a listing can never go live without the message, and no message can exist for a change that rolled back. A relay then publishes the message (in production, to an **SNS topic**), and a separate consumer generates the alerts.
+  - *Why:* alert generation leaves the request and the listing write path entirely. That removes contention on hot data when lots of listings change at once, and lets alerting scale on its own infrastructure.
+  - *Built here:* the outbox table (written in the same transaction as the status change), and an `outbox:relay` command that hands each message to the alert consumer in-process, standing in for SNS and its subscriber. It's scheduled every minute for this exercise, and can be run by hand for demos. The SNS publisher is described, not built.
+  - *The message is small:* a `listing.went_live` event with the key IDs and a timestamp only. The consumer reloads the listing and re-checks it's still live before alerting. At larger scale (very large subscription sets per event), fan-out may need other methods, e.g. partitioned consumers or pre-computed subscription indexes.
+  - *Failures (documented, not built; theoretical at this size):* a failed message would stay unsent, recording its attempt count and last error, and be retried on the next run. After a set number of attempts (e.g. 5) it would be moved aside as failed, like a dead-letter queue, so one poison message can't block the rest. I'd **alarm on failed messages** (e.g. a CloudWatch alarm on the dead-letter count) so they're looked at quickly, and provide a way to **re-run** them once the cause is fixed. Sent messages would be cleaned up after a retention period (e.g. 30 days). In this exercise the relay simply leaves a failed message unsent, so the next run retries it.
+  - *Delivery is at-least-once,* so the consumer must be idempotent. The unique (user, listing) constraint and insert-or-skip make a repeated message harmless.
 
 ## Deliberately left out
 
