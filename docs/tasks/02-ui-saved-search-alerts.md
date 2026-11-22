@@ -33,8 +33,8 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 - **Tokens** in `resources/css/app.css` `@theme`, from Street's marketing site (navy `#0C0D17` header, cream canvas, square white CTA, column dividers, underlined text links) and dashboard (teal primary, light teal active, rounded white cards with soft shadows, status pills with text). No glass. Every text pair at least 4.5:1.
 - **Logo:** vendor `https://web2026.street.co.uk/images/street-logo.svg` into `resources/images/`. Inline it, white on navy via a named `@utility` (it uses `fill="var(--fill-0, …)"`). Accessible name, links home.
-- **Header (every page):** logo · Listings · Saved searches · Alerts (unread count, with an accessible label like "3 unread alerts") · **"Welcome back, {name}"** top right, from `auth.user`.
-- **Mobile:** nav and greeting behind a "Menu" button (`aria-expanded`, Escape closes). Logo and alerts count stay visible.
+- **Header (every page):** logo and a **Listings** link on the left · on the right, a **bookmark icon** (Saved searches), a **bell** (Alerts, unread badge, accessible name e.g. "Alerts, 3 unread", no prefetch), and an **initials avatar** ("Signed in as {name}" for screen readers), **always the rightmost item at every width**.
+- **Mobile:** everything fits in one row at 320px (the logo already links to Listings); a menu only if something genuinely doesn't fit.
 - **Existing listing card and detail page:** a light token swap only (colours, radius), no layout changes.
 
 ## Listing images (placeholders)

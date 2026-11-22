@@ -1,1 +1,74 @@
 @import 'tailwindcss';
+
+/*
+ * Street brand tokens: header and canvas from the marketing site, cards and
+ * status colours from the dashboard. Use these utilities (bg-brand-600,
+ * text-ink, rounded-card ...) in components, never raw hex or arbitrary values.
+ * Text pairs were checked for WCAG 2.2 AA (>= 4.5:1); re-check any new pair.
+ */
+@theme {
+    /* Header bar: the logo's own colour. White on it is 19.3:1. */
+    --color-navy: #0c0d17;
+    /* Quieter text on navy (11.8:1). */
+    --color-navy-muted: #c7cad6;
+
+    /* Deep teal scale: 600 = primary actions (white text 6.0:1), 700 = links (7.0:1 on canvas), 100 = light active state. */
+    --color-brand-50: #e6f4f3;
+    --color-brand-100: #cce8e6;
+    --color-brand-200: #99d1ce;
+    --color-brand-300: #66babb;
+    --color-brand-400: #3da3a3;
+    --color-brand-500: #1a8a8a;
+    --color-brand-600: #0b6e6e;
+    --color-brand-700: #0a5f5f;
+    --color-brand-800: #084c4c;
+    --color-brand-900: #063838;
+
+    /* Warm cream canvas (marketing site), not grey. */
+    --color-canvas: #faf7f2;
+    --color-surface: #ffffff;
+    --color-ink: #17191c;
+    /* Muted slate body text: 6.0:1 on canvas, 6.5:1 on white. */
+    --color-muted: #575f6a;
+    /* Hairline borders and dividers. Decorative only, never carries text. */
+    --color-line: #d9dde2;
+
+    /* Status: the plain colour is text-safe on its -soft pill (5.4:1 / 5.2:1). Status always carries a text label. */
+    --color-behind: #a84300;
+    --color-behind-soft: #fff0e3;
+    --color-on-track: #16742f;
+    --color-on-track-soft: #e3f6e8;
+
+    --radius-card: 0.75rem;
+    --radius-control: 0.5rem;
+    --radius-pill: 9999px;
+
+    --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+
+    /* Listing photo box. */
+    --aspect-card: 3 / 2;
+
+    /* No font package: Inter if the user has it, otherwise the system UI font. */
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* The logo SVG fills with var(--fill-0, #0C0D17); on the navy header it must be white. */
+@utility logo-inverse {
+    --fill-0: var(--color-surface);
+}
+
+/* Visible keyboard focus on light surfaces (teal 600 is 5.7:1 on canvas). */
+@utility focus-ring {
+    &:focus-visible {
+        outline: 2px solid var(--color-brand-600);
+        outline-offset: 2px;
+    }
+}
+
+/* Visible keyboard focus on the navy header (light teal is well over 3:1 on navy). */
+@utility focus-ring-inverse {
+    &:focus-visible {
+        outline: 2px solid var(--color-brand-200);
+        outline-offset: 2px;
+    }
+}

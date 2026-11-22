@@ -475,5 +475,36 @@ The UI task now includes these decisions, a new **step 1b** (backend prep: P1, P
 
 **Reviewed:** *pending*
 
+### 20. Task 2, step 2a: UI foundations
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `ui` (Sonnet), reviewed by the main session (Opus)
+
+I split the UI into 2a (foundations) and 2b (pages), so each is reviewable on its own.
+
+**Built:**
+- **Test tooling:** Vitest 4, Vue Test Utils, jsdom 26 and axe-core. The versions run on both Node 20 (CI) and 24 (local); Vitest 5 and jsdom 27 need Node 22+, so they were avoided. An axe helper runs WCAG 2.2 AA rules, with only `color-contrast` disabled because jsdom can't compute it. CI gains an `npm test` step.
+- **Theme tokens:** navy, cream canvas, teal brand scale, text-safe status colours, radius, shadow, `aspect-card`, plus `logo-inverse` and focus-ring utilities. Every text pair was contrast-checked: the lowest is muted on canvas at **6.05:1**, all above 4.5:1.
+- **Logo:** Street's SVG vendored (12 paths, nothing else) and inlined so `logo-inverse` turns it white. Its accessible name is "Street".
+- **Shell:** skip link, navy header, main nav with `aria-current`, a mobile Menu button (`aria-expanded`, Escape closes it and restores focus), and one `<main>` with one `h1`.
+- **Header, reworked after I reviewed it in the browser:**
+  - The first version had a "Welcome back, {name}" greeting and a text "Alerts" link. I changed it to the logo on the left, **Listings and Saved searches centred**, and on the right a small **initials avatar** and a **bell** linking to Alerts, with an unread badge.
+  - I then removed the visible name text. The avatar now carries "Signed in as {name}" for screen readers, with the initials hidden so they aren't read out letter by letter.
+  - The bell's accessible name is "Alerts, 3 unread", and it doesn't prefetch (see below).
+  - Final layout: the logo and **Listings** on the left; a **bookmark icon** (Saved searches), the bell, then the avatar on the right, with **the avatar always rightmost at every width**.
+  - With one text link left, the mobile Menu button and its code were removed. The logo already links to Listings, so the "Listings" text hides on small screens.
+  - **Checked at 320px:** the agent only calculated the fit, so I loaded the page into a 320px frame in Chrome. Everything fits in one row with no horizontal scroll, and the avatar is last.
+- **Listing card:** photo in a 3:2 box with `object-cover`, `alt=""`, lazy loading, an `h2` per card, and a non-link variant for unavailable homes.
+- **Tests:** 14 Vitest tests, AAA layout, including axe on the shell (with and without a user and unread alerts) and on both card variants.
+
+**Found in review:**
+- **"The logo isn't inverted":** I checked in Chrome rather than guessing. Our CSS works (all 12 paths compute to white). The **Dark Reader** extension in my browser was inverting the white SVG back to dark (`filter: invert(1)` plus `data-darkreader-inline-invert`). It isn't an app bug, but it changes how the brand renders for any visitor using it, and it would skew WAVE contrast checks.
+- The logo is rendered with `v-html`. That's acceptable here because it's a static SVG vendored in the repo, never user input; the "no `v-html` with user data" rule still holds.
+- `npm audit` flags a high-severity advisory in Vue's server renderer (below 3.5.42). The app doesn't server-render, but the runtime bump is put to me as a decision.
+- Vitest on Windows fails under Git Bash's lowercase `/c/...` path ("failed to find the current suite"). It works from PowerShell; CI on Linux is unaffected.
+
+**Checks (re-run by me):** `npm test` 14 passed; build OK; PHP suite 151 passed; no inline styles, `<style>` blocks, arbitrary values or `!important` in `resources/`.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
