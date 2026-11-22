@@ -32,6 +32,7 @@ Kept up to date as tools are added, so the setup can be reproduced and revisited
 | PHPUnit 12, Pint, Larastan (level 5) | Local + CI | Already in the repo. Unchanged. |
 | Node + npm | Local + CI | Front-end build. CI uses Node 20; locally I have Node 24 (see the parity gap in entry 4). |
 | Claude Code | Local | AI pair. Rules in [CLAUDE.md](CLAUDE.md). |
+| Claude Code output style "KLANG" | Local | [.claude/output-styles/klang.md](.claude/output-styles/klang.md): how the AI talks to me (action first, plain English to ASD-STE100, always flag guesses and unrequested changes). Affects replies only, not the code. |
 | Claude Code hooks (Node script) | Local | [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) blocks pushes and PRs until the CI checks pass locally. |
 | git worktrees | Local | One isolated checkout per task. |
 | GitHub CLI (`gh`) | Local | PRs against my own fork. |
@@ -95,7 +96,7 @@ I wrote [CLAUDE.md](CLAUDE.md) so every session and every worktree starts from t
 
 I committed the documents from entries 1–2 (`CLAUDE.md`, `PROCESS.md`, and `.gitignore` with `/.worktrees` added) and pushed them, so all later work builds on a recorded starting point. No application code changed.
 
-- My personal output-style file (`.claude/output-styles/`) is left out on purpose. It's about how I like the AI to talk to me, not about the project.
+- My personal output-style file (`.claude/output-styles/`) was left out at first, because it's about how I like the AI to talk to me, not about the project. *Later added for visibility (after entry 5):* it shows how I tune the AI's replies for me (action first, short plain English to ASD-STE100, honesty rules), separately from the project rules in `CLAUDE.md`.
 - **Checks:** not run locally. This machine has no PHP or Composer yet (`php: command not found`). The change is docs-only, so nothing PHP can break. CI runs on the PR (Task 2).
 
 **Reviewed:** *pending*
