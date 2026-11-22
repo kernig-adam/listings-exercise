@@ -12,6 +12,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class BranchResource extends JsonResource
 {
     /**
+     * The branch props a listing card shows.
+     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

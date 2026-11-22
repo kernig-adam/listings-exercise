@@ -8,32 +8,16 @@ defineProps({
 </script>
 
 <template>
-    <nav v-if="meta.last_page > 1" class="mt-8 flex items-center justify-center gap-4">
-        <Link
-            v-if="links.prev"
-            :href="links.prev"
-            preserve-scroll
-            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-100"
-        >
-            Previous
-        </Link>
-        <span v-else class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-300">
+    <nav v-if="meta.last_page > 1" aria-label="Pagination" class="mt-8 flex items-center justify-center gap-4">
+        <Link v-if="links.prev" :href="links.prev" preserve-scroll class="btn-secondary">Previous</Link>
+        <span v-else class="inline-flex min-h-11 items-center rounded-control border border-line px-5 text-sm text-muted">
             Previous
         </span>
 
-        <span class="text-sm text-slate-500">
-            Page {{ meta.current_page }} of {{ meta.last_page }}
-        </span>
+        <span class="text-sm text-muted">Page {{ meta.current_page }} of {{ meta.last_page }}</span>
 
-        <Link
-            v-if="links.next"
-            :href="links.next"
-            preserve-scroll
-            class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm hover:bg-slate-100"
-        >
-            Next
-        </Link>
-        <span v-else class="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-300">
+        <Link v-if="links.next" :href="links.next" preserve-scroll class="btn-secondary">Next</Link>
+        <span v-else class="inline-flex min-h-11 items-center rounded-control border border-line px-5 text-sm text-muted">
             Next
         </span>
     </nav>

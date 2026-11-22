@@ -4,6 +4,8 @@ A small property-listings application: a Laravel 13 API with a Vue 3 front end. 
 
 This repository is the starting point for a technical exercise. **Your task is described in [`TASK.md`](TASK.md).** This README covers what's here and how to run it.
 
+> **Submission notes (saved-search alerts):** start with [`docs/NOTES.md`](docs/NOTES.md), a half-page summary with a five-minute walkthrough from a fresh install to a real alert. The full reasoning is in [`docs/DECISIONS.md`](docs/DECISIONS.md), and how the work was done, step by step, is in [`docs/PROCESS.md`](docs/PROCESS.md).
+
 ## Requirements
 
 - PHP 8.4

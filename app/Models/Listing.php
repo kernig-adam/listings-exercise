@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Enums\ListingStatus;
 use App\Enums\PropertyType;
+use App\Support\SearchCriteria;
 use Database\Factories\ListingFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The casts() method tells Eloquent how to hydrate these attributes, but static
@@ -51,6 +54,8 @@ class Listing extends Model
     ];
 
     /**
+     * Price and counts are whole numbers; property type and status are enums.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -66,6 +71,42 @@ class Listing extends Model
     }
 
     /**
+     * Writing the go-live outbox message inside save() keeps it in the listing's own
+     * transaction whichever way the listing is saved (create, update, factory), so
+     * the event can never exist without the change, or the change without the event.
+     * Bulk query-builder updates bypass save() and so bypass this; none exist.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            // Decided before saving, while the original status is still known.
+            $goingLive = $this->status === ListingStatus::Live
+                && (! $this->exists || $this->isDirty('status'));
+
+            // A live listing always has a date: the listings page orders by it.
+            if ($goingLive && $this->listed_at === null) {
+                $this->listed_at = now();
+            }
+
+            $saved = parent::save($options);
+
+            if ($saved && $goingLive) {
+                $message = OutboxMessage::query()->create([
+                    'type' => OutboxMessage::LISTING_WENT_LIVE,
+                    'payload' => ['listing_id' => $this->id, 'occurred_at' => now()->toIso8601String()],
+                ]);
+                Log::info('Listing went live', ['listing_id' => $this->id, 'outbox_message_id' => $message->id]);
+            }
+
+            return $saved;
+        });
+    }
+
+    /**
+     * The branch advertising this home; its region is what searches match on.
+     *
      * @return BelongsTo<Branch, $this>
      */
     public function branch(): BelongsTo
@@ -81,5 +122,27 @@ class Listing extends Model
     public function scopeLive(Builder $query): void
     {
         $query->where('status', ListingStatus::Live);
+    }
+
+    /**
+     * The one definition of "this listing matches a search", shared by the
+     * listings page and alert matching. Empty criteria leave that dimension open.
+     *
+     * @param  Builder<Listing>  $query
+     */
+    public function scopeMatching(Builder $query, SearchCriteria $criteria): void
+    {
+        $query
+            ->when($criteria->minPrice !== null, fn (Builder $q) => $q->where('price', '>=', $criteria->minPrice))
+            ->when($criteria->maxPrice !== null, fn (Builder $q) => $q->where('price', '<=', $criteria->maxPrice))
+            ->when($criteria->minBedrooms !== null, fn (Builder $q) => $q->where('bedrooms', '>=', $criteria->minBedrooms))
+            ->when($criteria->maxBedrooms !== null, fn (Builder $q) => $q->where('bedrooms', '<=', $criteria->maxBedrooms))
+            ->when($criteria->minBathrooms !== null, fn (Builder $q) => $q->where('bathrooms', '>=', $criteria->minBathrooms))
+            ->when($criteria->maxBathrooms !== null, fn (Builder $q) => $q->where('bathrooms', '<=', $criteria->maxBathrooms))
+            ->when($criteria->propertyTypes !== [], fn (Builder $q) => $q->whereIn('property_type', $criteria->propertyTypes))
+            ->when($criteria->regions !== [], fn (Builder $q) => $q->whereHas(
+                'branch',
+                fn (Builder $branch) => $branch->whereIn('region', $criteria->regions),
+            ));
     }
 }

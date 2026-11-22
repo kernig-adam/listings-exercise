@@ -12,18 +12,26 @@ enum PropertyType: string
 
     /**
      * Value/label pairs for building a select. Keeps the option list in one
-     * place rather than duplicated in the front end.
+     * place rather than duplicated in the front end. Sorted by label so the
+     * UI lists them alphabetically, independent of the order cases are declared.
      *
      * @return list<array{value: string, label: string}>
      */
     public static function options(): array
     {
-        return array_map(
+        $options = array_map(
             fn (self $type) => ['value' => $type->value, 'label' => $type->label()],
             self::cases(),
         );
+
+        usort($options, fn (array $a, array $b) => strcmp($a['label'], $b['label']));
+
+        return $options;
     }
 
+    /**
+     * Singular name for a select option or a single listing.
+     */
     public function label(): string
     {
         return match ($this) {
@@ -32,6 +40,20 @@ enum PropertyType: string
             self::Terraced => 'Terraced',
             self::Flat => 'Flat',
             self::Bungalow => 'Bungalow',
+        };
+    }
+
+    /**
+     * Used in plain-words search descriptions ("Flats in Leeds").
+     */
+    public function pluralLabel(): string
+    {
+        return match ($this) {
+            self::Detached => 'Detached homes',
+            self::SemiDetached => 'Semi-detached homes',
+            self::Terraced => 'Terraced homes',
+            self::Flat => 'Flats',
+            self::Bungalow => 'Bungalows',
         };
     }
 }

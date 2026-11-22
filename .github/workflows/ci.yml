@@ -17,7 +17,7 @@ jobs:
         with:
           php-version: '8.4'
           extensions: pdo, sqlite3, pdo_sqlite
-          coverage: none
+          coverage: pcov
 
       # composer install also creates .env from .env.example and sets APP_KEY.
       - name: Install Composer dependencies
@@ -29,8 +29,10 @@ jobs:
       - name: Static analysis (PHPStan)
         run: vendor/bin/phpstan analyse --no-progress
 
+      # Fails below the threshold. Baseline on the untouched code was 93.2%.
+      # The local push hook reads --min from this line, so it lives here only.
       - name: Tests
-        run: php artisan test
+        run: php artisan test --coverage --min=90
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -43,3 +45,6 @@ jobs:
 
       - name: Build front end
         run: npm run build
+
+      - name: Front-end tests (Vitest)
+        run: npm test

@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Monolog\Handler\TestHandler;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -14,5 +15,8 @@ abstract class TestCase extends BaseTestCase
         // built Vite manifest in public/build. The tests are about the response,
         // not the asset pipeline, so stub the directives out.
         $this->withoutVite();
+
+        // Activity events stay in memory so tests can read them back, off disk.
+        config(['logging.channels.activity' => ['driver' => 'monolog', 'handler' => TestHandler::class]]);
     }
 }

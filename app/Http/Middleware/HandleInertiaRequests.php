@@ -40,6 +40,16 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user()?->only('id', 'name', 'email'),
             ],
+            // A closure, so it is counted when the response is built: after the
+            // alerts page has marked its alerts read. Homes, not alerts, to match
+            // the one-card-per-home page.
+            'alerts' => [
+                'unread' => fn (): int => $request->user()?->alerts()->unread()->distinct()->count('listing_id') ?? 0,
+            ],
+            // One-shot messages (e.g. "Search saved.") for the UI to announce.
+            'flash' => [
+                'status' => $request->session()->get('status'),
+            ],
         ];
     }
 }
