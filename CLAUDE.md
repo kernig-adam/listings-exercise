@@ -32,14 +32,18 @@ Comments explain *why*, not *what* (see the `id` tiebreaker comment in `ListingC
 
 ## Quality gate
 
+Native PHP, as the README describes. Local must match CI: same PHP minor version, and **PCOV** as the coverage driver.
+
 All four must pass before a task is done. CI runs the same.
 
 ```bash
-php artisan test
+php artisan test --coverage --min=90   # threshold lives in .github/workflows/ci.yml only
 vendor/bin/pint --test        # fix with: vendor/bin/pint
 vendor/bin/phpstan analyse    # keep the ignoreErrors baseline empty
 npm run build
 ```
+
+**Enforced by a hook.** [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) runs all four before any `git push` or `gh pr create|merge|ready`, and blocks the command if anything fails, or if local PHP/PCOV doesn't match CI. Run the push from inside the worktree (or with `git -C <worktree>`) so the right checkout is checked. Never bypass or weaken the hook, and never lower the coverage threshold, without Adam's say-so.
 
 Write the failing test first for any behaviour change (matching, scoping to the user, dedup). Do not claim a task is done without running the checks and showing the output.
 
@@ -65,7 +69,7 @@ php artisan boost:install     # choose Claude Code; writes .mcp.json, boost.json
   git worktree add .worktrees/<task> -b claude/<task> feature/saved-search-alerts
   ```
 - **Any branch Claude creates or pushes must be prefixed `claude/`**, so the history shows which work was automated. Never push to a branch without the prefix.
-  `.worktrees/` is gitignored. A new worktree needs `composer install`, `npm install`, its own `.env` and `database/database.sqlite`.
+  `.worktrees/` is gitignored. A new worktree needs `composer install` and `npm ci`; Composer's install script creates `.env` and `database/database.sqlite`.
 - One task = one reviewable change (e.g. "migration + model + factory", "matching logic + tests"). If a task touches more than one layer it is probably two tasks.
 - Commit small. Commit messages say *why*. Only push or open PRs when asked.
 - Hand-back: PR from the feature branch **against our own fork** (`kernig-adam/listings-exercise`), never upstream.

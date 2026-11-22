@@ -21,6 +21,24 @@ This file shows how I worked through the exercise: what I looked at, what I deci
 | `feature/saved-search-alerts` | me | Integration branch for the feature; the PR comes from here |
 | `claude/<task>` | Claude (automated) | One per task, merged into the feature branch |
 
+## Tooling I chose
+
+Kept up to date as tools are added, so the setup can be reproduced and revisited later.
+
+| Tool | Where | Why |
+| --- | --- | --- |
+| PHP 8.4 (via Chocolatey) + Composer (Windows installer, `.exe`) | Local | The native setup the README specifies, matching CI. Not my preference: I'd use Docker (see entry 4), but I'm keeping to the setup the codebase defines. |
+| PCOV | Local + CI | Coverage driver. The same driver on both sides, so coverage numbers mean the same thing. |
+| PHPUnit 12, Pint, Larastan (level 5) | Local + CI | Already in the repo. Unchanged. |
+| Node + npm | Local + CI | Front-end build. CI uses Node 20; locally I have Node 24 (see the parity gap in entry 4). |
+| Claude Code | Local | AI pair. Rules in [CLAUDE.md](CLAUDE.md). |
+| Claude Code hooks (Node script) | Local | [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) blocks pushes and PRs until the CI checks pass locally. |
+| git worktrees | Local | One isolated checkout per task. |
+| GitHub CLI (`gh`) | Local | PRs against my own fork. |
+| GitHub Actions | CI | Existing pipeline; I added a coverage threshold. |
+| Docker Desktop | Local | Used once, for the baseline in entry 4, before I had PHP. Not part of the repo. |
+| Laravel Boost | Local | Planned: MCP server and guidelines so the AI checks real docs and schema. |
+
 ---
 
 ## Log
@@ -79,6 +97,65 @@ I committed the documents from entries 1–2 (`CLAUDE.md`, `PROCESS.md`, and `.g
 
 - My personal output-style file (`.claude/output-styles/`) is left out on purpose. It's about how I like the AI to talk to me, not about the project.
 - **Checks:** not run locally. This machine has no PHP or Composer yet (`php: command not found`). The change is docs-only, so nothing PHP can break. CI runs on the PR (Task 2).
+
+**Reviewed:** *pending*
+
+### 4. Task 2: quality baseline and a local gate
+
+**Branch:** `claude/quality-gate` (worktree, from `claude/initial`) · **Model:** Opus 5.5 (main session)
+
+**Goal:** before any feature code, prove the starting point is green, set a coverage benchmark, and make it impossible to push work that fails the checks. No application code changes.
+
+**Baseline on the untouched code.** I ran it in Docker, because this machine had no PHP yet:
+
+| Check | Result |
+| --- | --- |
+| Pint | Pass (40 files) |
+| PHPStan level 5 | No errors |
+| PHPUnit | 16 passed, 117 assertions |
+| Coverage (PCOV) | **93.2%** lines. Only `Enums/ListingStatus` and `Models/Branch` show 0%. |
+| `npm run build` | Pass |
+
+**What I added:**
+- **Coverage threshold in CI:** `php artisan test --coverage --min=90`, measured with PCOV. 90% gives a small buffer under today's 93.2%, so new work has to arrive with tests. The threshold lives only in `ci.yml`.
+- **Local quality gate:** a Claude Code `PreToolUse` hook. Before any `git push` or `gh pr create|merge|ready`, it runs the same checks as CI (Composer install, Pint, PHPStan, tests with coverage, `npm ci`, build) and blocks the command if any fail. I don't rely on the AI remembering to run checks, and CI minutes only go on work that already passes locally. The hook reads the threshold and PHP version from `ci.yml`, so CI stays the single source of truth.
+- **Machine parity:** the hook also refuses to run unless local PHP is the same minor version as CI and PCOV is loaded. A local pass on a different PHP version or coverage driver doesn't prove the same thing as a CI pass.
+
+**What I tried, and reversed.** My first approach was Laravel Sail. When I reviewed it against the brief ("work with the codebase, not against it"), it didn't fit:
+- It added a dev dependency and `compose.yaml` that the repo doesn't use.
+- `sail:install` silently rewrote `phpunit.xml`, replacing the in-memory SQLite test database with a MySQL-style `testing` database. That's the repo's test setup changing under me, which I caught in the diff and reverted.
+
+So I removed Sail and kept the README's native PHP setup. On this Windows machine that means PHP 8.4 installed through Chocolatey and Composer through its Windows installer (`.exe`). The repo's diff is now only `.claude/`, `CLAUDE.md`, `PROCESS.md` and one CI line.
+
+To be clear: **I would have taken the Docker approach.** I'm running native PHP only because the brief asks me to work with the codebase as it's defined, and the README defines a native setup.
+
+**How I'd do it in a real project: Sail through Docker.** I'd propose this to the team rather than add it alone in an exercise:
+- **The same platform on every machine.** Native PHP on Windows means Chocolatey or manual installs, separate Composer, and hand-installed extensions like PCOV. Each one is a maintenance point and a way for machines to drift.
+- **Parity built in.** A container pins the PHP version, extensions and Node version for everyone, locally and in CI. Today's native setup already has a gap: CI runs Node 20 and I have Node 24. The hook can check PHP and PCOV, but a container removes the whole class of problem.
+- **The path to deployment.** The same image can be pushed to AWS ECR and run on Lambda (container images) or ECS, so dev and prod run the same thing.
+
+**What I'd add next: CVE / vulnerability checks.** Noted, not built, to stay inside the time-box. A remote code execution flaw was recently reported in the PHP version line used here. That's a reminder that a green test suite says nothing about the runtime or the dependencies being safe. I'd add:
+- **`composer audit`** and **`npm audit --audit-level=high`** as gate steps, both locally (hook) and in CI. Both are built into tools the repo already uses, so no new dependencies.
+- **A PHP runtime check.** Fail when the local or CI PHP patch version has a known security advisory. Pin CI to a patched version instead of a floating `8.4`.
+- **Dependabot (or Renovate) security updates** on the fork, so advisories turn into PRs instead of waiting for someone to notice.
+- In the Docker approach I'd prefer, an **image scan** (for example Trivy or ECR's built-in scanning) before deploy.
+
+**Local setup.** Chocolatey first installed PHP 8.6, which doesn't match CI (8.4), and no Windows PCOV build exists for 8.6. For parity I downgraded to PHP 8.4.28 and installed the official PCOV 1.0.12 DLL for 8.4 (NTS, x64). I enabled `pdo_sqlite`, `sqlite3`, `fileinfo`, `zip`, `mbstring`, `openssl`, `curl` and `pcov` in `php.ini`, and kept a backup.
+
+**Checks (native PHP 8.4.28 + PCOV):**
+- The gate passed end to end in about 25 seconds: Composer install, Pint, PHPStan, 16 tests, **93.2% coverage** (identical to the Docker baseline, so parity holds), `npm ci`, build.
+- Threshold proven: `--min=99` fails with "Code coverage below expected".
+
+**Hook bugs found while testing, and fixed:**
+- **It failed open on a crash.** Claude Code treats any exit code other than 2 as "allow", so an exception in the hook would have let a push through. It now traps every crash and exits 2. I tested this with a bad directory and bad input.
+- The Composer step was missing the word `composer`.
+- `vendor/bin/pint` doesn't run under Windows `cmd`. Changed to `php vendor/bin/pint`, which works on every OS.
+
+**Known gaps:**
+- PHP 8.6 is still first on the machine PATH, so a plain `php` resolves to 8.6 until the PATH is fixed. The hook catches this and blocks.
+- CI uses Node 20, local is Node 24.
+
+**Still to do:** push, and confirm CI is green with the coverage threshold.
 
 **Reviewed:** *pending*
 
