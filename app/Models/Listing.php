@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The casts() method tells Eloquent how to hydrate these attributes, but static
@@ -64,6 +65,34 @@ class Listing extends Model
             'status' => ListingStatus::class,
             'listed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Writing the go-live outbox message inside save() keeps it in the listing's own
+     * transaction whichever way the listing is saved (create, update, factory), so
+     * the event can never exist without the change, or the change without the event.
+     * Bulk query-builder updates bypass save() and so bypass this; none exist.
+     *
+     * @param  array<string, mixed>  $options
+     */
+    public function save(array $options = []): bool
+    {
+        return DB::transaction(function () use ($options): bool {
+            // Decided before saving, while the original status is still known.
+            $goingLive = $this->status === ListingStatus::Live
+                && (! $this->exists || $this->isDirty('status'));
+
+            $saved = parent::save($options);
+
+            if ($saved && $goingLive) {
+                OutboxMessage::query()->create([
+                    'type' => OutboxMessage::LISTING_WENT_LIVE,
+                    'payload' => ['listing_id' => $this->id, 'occurred_at' => now()->toIso8601String()],
+                ]);
+            }
+
+            return $saved;
+        });
     }
 
     /**

@@ -25,41 +25,56 @@ class ListingSearchTest extends TestCase
             ->pluck('price')->sort()->values()->all();
     }
 
+    private function currentSearchSaved(string $url): bool
+    {
+        return $this->get($url)->viewData('page')['props']['currentSearchSaved'];
+    }
+
     public function test_price_range_is_inclusive_at_both_ends(): void
     {
+        // Arrange
         foreach ([90_000, 100_000, 150_000, 200_000, 250_000] as $price) {
             Listing::factory()->live()->create(['price' => $price]);
         }
 
-        $this->assertSame(
-            [100_000, 150_000, 200_000],
-            $this->listingPrices('/?min_price=100000&max_price=200000&per_page=100'),
-        );
+        // Act
+        $prices = $this->listingPrices('/?min_price=100000&max_price=200000&per_page=100');
+
+        // Assert
+        $this->assertSame([100_000, 150_000, 200_000], $prices);
     }
 
     public function test_min_price_alone_is_a_lower_bound(): void
     {
+        // Arrange
         foreach ([90_000, 100_000, 250_000] as $price) {
             Listing::factory()->live()->create(['price' => $price]);
         }
 
-        $this->assertSame([100_000, 250_000], $this->listingPrices('/?min_price=100000'));
+        // Act
+        $prices = $this->listingPrices('/?min_price=100000');
+
+        // Assert
+        $this->assertSame([100_000, 250_000], $prices);
     }
 
     public function test_bedroom_range_is_inclusive_at_both_ends(): void
     {
+        // Arrange
         foreach ([1, 2, 3, 4, 5] as $beds) {
             Listing::factory()->live()->create(['bedrooms' => $beds, 'price' => $beds * 1000]);
         }
 
-        $this->assertSame(
-            [2000, 3000, 4000],
-            $this->listingPrices('/?min_bedrooms=2&max_bedrooms=4'),
-        );
+        // Act
+        $prices = $this->listingPrices('/?min_bedrooms=2&max_bedrooms=4');
+
+        // Assert
+        $this->assertSame([2000, 3000, 4000], $prices);
     }
 
     public function test_several_regions_and_types_match_any_of_them(): void
     {
+        // Arrange
         $liverpool = Branch::factory()->create(['region' => 'Liverpool']);
         $newcastle = Branch::factory()->create(['region' => 'Newcastle']);
         $leeds = Branch::factory()->create(['region' => 'Leeds']);
@@ -68,40 +83,64 @@ class ListingSearchTest extends TestCase
         Listing::factory()->live()->for($leeds)->create(['property_type' => PropertyType::Flat, 'price' => 3]);
         Listing::factory()->live()->for($liverpool)->create(['property_type' => PropertyType::Bungalow, 'price' => 4]);
 
-        $this->assertSame([1, 2, 4], $this->listingPrices('/?region=Liverpool,Newcastle'));
-        $this->assertSame([1, 3], $this->listingPrices('/?property_type=flat'));
-        $this->assertSame([1, 2, 3], $this->listingPrices('/?property_type=flat,detached'));
-        $this->assertSame([1, 2], $this->listingPrices('/?region=Liverpool,Newcastle&property_type=flat,detached'));
+        // Act
+        $results = [
+            'regions' => $this->listingPrices('/?region=Liverpool,Newcastle'),
+            'one type' => $this->listingPrices('/?property_type=flat'),
+            'two types' => $this->listingPrices('/?property_type=flat,detached'),
+            'regions and types' => $this->listingPrices('/?region=Liverpool,Newcastle&property_type=flat,detached'),
+        ];
+
+        // Assert
+        $this->assertSame([
+            'regions' => [1, 2, 4],
+            'one type' => [1, 3],
+            'two types' => [1, 2, 3],
+            'regions and types' => [1, 2],
+        ], $results);
     }
 
     public function test_array_style_multi_values_work_too(): void
     {
+        // Arrange
         $liverpool = Branch::factory()->create(['region' => 'Liverpool']);
         $leeds = Branch::factory()->create(['region' => 'Leeds']);
         Listing::factory()->live()->for($liverpool)->create(['price' => 1]);
         Listing::factory()->live()->for($leeds)->create(['price' => 2]);
 
-        $this->assertSame([1], $this->listingPrices('/?region[]=Liverpool'));
+        // Act
+        $prices = $this->listingPrices('/?region[]=Liverpool');
+
+        // Assert
+        $this->assertSame([1], $prices);
     }
 
     public function test_old_single_value_links_still_work(): void
     {
+        // Arrange
         $branch = Branch::factory()->create(['region' => 'Leeds']);
         Listing::factory()->live()->for($branch)->create(['property_type' => PropertyType::Terraced, 'bedrooms' => 3, 'price' => 150_000]);
         Listing::factory()->live()->create(['property_type' => PropertyType::Flat, 'bedrooms' => 1, 'price' => 150_000]);
 
-        $this->get('/?region=Leeds&property_type=terraced&min_bedrooms=3&max_price=200000')
-            ->assertOk()
+        // Act
+        $response = $this->get('/?region=Leeds&property_type=terraced&min_bedrooms=3&max_price=200000');
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page->has('listings.data', 1));
     }
 
     public function test_region_casing_is_normalised_to_the_branch_region(): void
     {
+        // Arrange
         $branch = Branch::factory()->create(['region' => 'Liverpool']);
         Listing::factory()->live()->for($branch)->create();
 
-        $this->get('/?region=liverpool')
-            ->assertOk()
+        // Act
+        $response = $this->get('/?region=liverpool');
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('listings.data', 1)
                 ->where('filters.region', ['Liverpool'])
@@ -110,11 +149,15 @@ class ListingSearchTest extends TestCase
 
     public function test_echoed_filters_are_normalised(): void
     {
+        // Arrange
         Branch::factory()->create(['region' => 'Liverpool']);
         Branch::factory()->create(['region' => 'Newcastle']);
 
-        $this->get('/?region=Newcastle,,Liverpool,Newcastle&property_type=flat,detached&min_price=&max_price=300000&min_bedrooms=2&page=1&per_page=5')
-            ->assertOk()
+        // Act
+        $response = $this->get('/?region=Newcastle,,Liverpool,Newcastle&property_type=flat,detached&min_price=&max_price=300000&min_bedrooms=2&page=1&per_page=5');
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('filters', [
                     'min_price' => null,
@@ -129,10 +172,14 @@ class ListingSearchTest extends TestCase
 
     public function test_blank_filters_are_absent(): void
     {
+        // Arrange
         Listing::factory(2)->live()->create();
 
-        $this->get('/?min_price=&max_price=&min_bedrooms=&max_bedrooms=&property_type=&region=')
-            ->assertOk()
+        // Act
+        $response = $this->get('/?min_price=&max_price=&min_bedrooms=&max_bedrooms=&property_type=&region=');
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('listings.data', 2)
                 ->where('filters.region', [])
@@ -165,12 +212,15 @@ class ListingSearchTest extends TestCase
     #[DataProvider('badLinks')]
     public function test_a_bad_link_lands_on_a_working_page_with_an_error(string $query, string $field): void
     {
+        // Arrange
         Branch::factory()->create(['region' => 'Liverpool']);
         Listing::factory(2)->live()->create();
 
-        $this->followingRedirects()
-            ->get("/?{$query}")
-            ->assertOk()
+        // Act
+        $response = $this->followingRedirects()->get("/?{$query}");
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Listings/Index')
                 ->has("errors.{$field}")
@@ -179,31 +229,41 @@ class ListingSearchTest extends TestCase
 
     public function test_a_bad_filter_is_dropped_so_the_page_still_lists_homes(): void
     {
+        // Arrange
         Listing::factory(2)->live()->create();
 
-        $this->followingRedirects()
-            ->get('/?region=Atlantis')
-            ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('listings.data', 2)
-                ->where('filters.region', [])
-            );
+        // Act
+        $response = $this->followingRedirects()->get('/?region=Atlantis');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('listings.data', 2)
+            ->where('filters.region', [])
+        );
     }
 
     public function test_a_bad_link_keeps_the_valid_filters(): void
     {
-        $this->get('/?region=Atlantis&max_price=200000')
-            ->assertRedirect('/?max_price=200000')
+        // Act
+        $response = $this->get('/?region=Atlantis&max_price=200000');
+
+        // Assert
+        $response->assertRedirect('/?max_price=200000')
             ->assertSessionHasErrors('region');
     }
 
     public function test_index_provides_options_for_the_filter_form(): void
     {
+        // Arrange
         Branch::factory()->create(['region' => 'Leeds']);
         Branch::factory()->create(['region' => 'Leeds']);
         Branch::factory()->create(['region' => 'Bristol']);
 
-        $this->get('/')
-            ->assertOk()
+        // Act
+        $response = $this->get('/');
+
+        // Assert
+        $response->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('regionOptions', ['Bristol', 'Leeds'])
                 ->has('propertyTypes', count(PropertyType::cases()))
@@ -214,28 +274,40 @@ class ListingSearchTest extends TestCase
 
     public function test_current_search_saved_is_true_only_for_an_equal_saved_search(): void
     {
+        // Arrange
         $user = User::factory()->create();
         Branch::factory()->create(['region' => 'Liverpool']);
         Branch::factory()->create(['region' => 'Newcastle']);
         SavedSearch::factory()->for($user)->inRegions(['Liverpool', 'Newcastle'])->create();
 
-        $saved = fn (string $url, bool $expected) => $this->get($url)->assertInertia(
-            fn (AssertableInertia $page) => $page->where('currentSearchSaved', $expected)
-        );
+        // Act
+        $results = [
+            'equal search' => $this->currentSearchSaved('/?region=Newcastle,Liverpool&min_price=100000&max_price=200000&page=2'),
+            'fewer regions' => $this->currentSearchSaved('/?region=Liverpool&min_price=100000&max_price=200000'),
+            'fewer bounds' => $this->currentSearchSaved('/?region=Newcastle,Liverpool&min_price=100000'),
+            'no filters' => $this->currentSearchSaved('/'),
+        ];
 
-        $saved('/?region=Newcastle,Liverpool&min_price=100000&max_price=200000&page=2', true);
-        $saved('/?region=Liverpool&min_price=100000&max_price=200000', false);
-        $saved('/?region=Newcastle,Liverpool&min_price=100000', false);
-        $saved('/', false);
+        // Assert
+        $this->assertSame([
+            'equal search' => true,
+            'fewer regions' => false,
+            'fewer bounds' => false,
+            'no filters' => false,
+        ], $results);
     }
 
     public function test_current_search_saved_ignores_other_users_searches(): void
     {
+        // Arrange
         User::factory()->create();
         $other = User::factory()->create();
         SavedSearch::factory()->for($other)->create();
 
-        $this->get('/?min_price=100000&max_price=200000')
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('currentSearchSaved', false));
+        // Act
+        $response = $this->get('/?min_price=100000&max_price=200000');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('currentSearchSaved', false));
     }
 }

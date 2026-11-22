@@ -24,6 +24,8 @@ class OutboxMessage extends Model
     /** @use HasFactory<OutboxMessageFactory> */
     use HasFactory;
 
+    public const LISTING_WENT_LIVE = 'listing.went_live';
+
     protected $fillable = ['type', 'payload', 'sent_at'];
 
     /**

@@ -60,5 +60,6 @@ Work to the **OWASP Top 10** and the **OWASP ASVS** basics. The ones that apply 
 ## Tests (write the failing test first)
 
 - Feature tests in `tests/Feature`, with `RefreshDatabase` and `test_snake_case_names`, built from factories and their states (`Listing::factory()->live()`).
+- **AAA structure, every test:** **Arrange** (set up state with factories), **Act** (exactly one action under test: the request, command or method call), **Assert** (expectations only), as three blocks in that order separated by a blank line. Add `// Arrange`, `// Act`, `// Assert` comments when the blocks aren't obvious. One behaviour per test: no assertions mixed into the arranging, and no second Act. `tests/Feature/ListingTest.php` already follows this.
 - Assert behaviour: the HTTP status, Inertia props (`assertInertia`), database state, and user scoping. Not implementation details.
 - Done means `php artisan test --coverage --min=90`, Pint and PHPStan have run and passed, with the output shown.

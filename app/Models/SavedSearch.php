@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\SavedSearchFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -89,5 +90,28 @@ class SavedSearch extends Model
     public function alerts(): BelongsToMany
     {
         return $this->belongsToMany(Alert::class);
+    }
+
+    /**
+     * The inverse of Listing::scopeMatching: the searches a given listing satisfies.
+     * Null bounds and empty region/type sets are open; a test keeps the two in step.
+     *
+     * @param  Builder<SavedSearch>  $query
+     */
+    public function scopeMatchingListing(Builder $query, Listing $listing): void
+    {
+        $query
+            ->where(fn (Builder $q) => $q->whereNull('min_price')->orWhere('min_price', '<=', $listing->price))
+            ->where(fn (Builder $q) => $q->whereNull('max_price')->orWhere('max_price', '>=', $listing->price))
+            ->where(fn (Builder $q) => $q->whereNull('min_bedrooms')->orWhere('min_bedrooms', '<=', $listing->bedrooms))
+            ->where(fn (Builder $q) => $q->whereNull('max_bedrooms')->orWhere('max_bedrooms', '>=', $listing->bedrooms))
+            ->where(fn (Builder $q) => $q->whereDoesntHave('regions')->orWhereHas(
+                'regions',
+                fn (Builder $r) => $r->where('region', $listing->branch->region),
+            ))
+            ->where(fn (Builder $q) => $q->whereDoesntHave('propertyTypes')->orWhereHas(
+                'propertyTypes',
+                fn (Builder $t) => $t->where('property_type', $listing->property_type),
+            ));
     }
 }

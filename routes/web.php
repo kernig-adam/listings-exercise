@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\ListingController;
 use App\Http\Controllers\SavedSearchController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ListingController::class, 'index'])->name('listings.index');
 Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
+
+Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
 
 Route::get('/saved-searches', [SavedSearchController::class, 'index'])->name('saved-searches.index');
 Route::middleware('throttle:saved-searches')->group(function () {

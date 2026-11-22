@@ -381,5 +381,36 @@ I split step 3 in two (3a: search and saved searches; 3b: outbox, relay, consume
 
 **Reviewed:** *pending*
 
+### 17. Task 1, step 3b: outbox, relay, consumer and alerts
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `backend` (Sonnet), reviewed by the main session (Opus)
+
+**Tests first:** 41 tests written before any code. The first run had 38 failing (no relay command, no alerts route, no inverse scope, no outbox write), then green. Mid-task I added a rule that tests follow AAA; the agent applied it to its new tests.
+
+**Built:**
+- **Atomic go-live:** `Listing::save()` wraps the save in a transaction and writes the `listing.went_live` outbox row inside it. Whether the listing is "going live" is decided *before* saving, while the old status is known. A test forces the outbox write to fail and proves the status change rolls back.
+- **`outbox:relay`:** an explicit one-entry handler map, id order, marks sent, logs failures (no personal data) and carries on, scheduled every minute without overlap. The in-process call is marked as standing in for SNS.
+- **Consumer (`App\Outbox\ListingWentLive`):** re-checks the listing is still live, then matches in one query through `SavedSearch::scopeMatchingListing`. A **parity test** (13 searches × 5 listings) keeps that inverse scope in step with `Listing::scopeMatching`. It creates one alert per user (or refreshes an existing unread one), sets `back_on_market` for homes alerted before, and is idempotent per message.
+- **Alerts page:** user-scoped, newest first, 15 per page. "New" is captured before marking read, only the shown page is marked read, and marking read doesn't re-sort the list. Alerts whose searches were deleted are still explained. The page prop is `alertList`, so it doesn't clobber the shared `alerts.unread`.
+- **Seeder:** marks the seeded stock's outbox rows sent, so the first relay doesn't flood the demo user, and adds one demo saved search.
+
+**Found in review:** the agent reported that reprocessing a message "changes nothing, not even `updated_at`". That's true for newly created alerts, but if the message *refreshed* someone's unread alert, a reprocess touches it again. The only effect is the alert moving back to the top, so it's harmless; I'm recording it accurately rather than repeating the claim.
+
+**Live demo (run by me on the real database):**
+- `migrate:fresh --seed` leaves 0 unsent messages.
+- Setting draft listing #74 live, then running `outbox:relay`, created alert #1 (`new_listing`, linked to the demo search).
+- Marking it read, setting under offer, then live again, then relaying created alert #2 (`back_on_market`, unread). The re-listing rule works end to end.
+
+**AAA audit** (all new tests, including the earlier steps): the structure is mostly sound, but two patterns break strict AAA. Setup steps that also assert (e.g. a setup relay run ending in `->assertSuccessful()`), and Act chained to Assert (`$this->post(...)->assertSessionHasErrors(...)`, a common Laravel idiom). The step 3a tests also lack blank-line separation. **I chose to tidy, consistently:** every feature test, including the two original files, now uses the same AAA layout (`// Arrange`, `// Act`, `// Assert`; no assertions in setup; one captured action). Test-only change: no behaviour or coverage changes.
+- **Verified, not assumed:**
+  - Same 134 tests, 98.3% coverage, and no tests with zero assertions (`--fail-on-risky`).
+  - The assertion count fell from 778 to 725. I checked why: setup assertions were removed, and multi-request tests now compare one combined result instead of asserting per request.
+  - To prove the tests still catch bugs, I **deliberately broke the consumer twice**: forcing every alert to `new_listing` failed 1 test, and removing the flip-flop guard failed 2. Then I restored the code (byte-identical) and the suite went green again.
+- **Judgement calls I accepted:** three tests gather several GETs inside one Act and compare them together (a mild stretch of "one action", but one behaviour per test); the no-backfill test proves it with "no alerts, no pending messages" after saving, instead of a second relay run.
+
+**Checks (re-run by me):** 134 tests passed, 778 assertions, **98.3%** coverage; Pint passed; PHPStan 0 errors; build OK.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
