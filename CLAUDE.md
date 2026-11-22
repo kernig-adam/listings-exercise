@@ -72,6 +72,7 @@ php artisan boost:install     # choose Claude Code; writes .mcp.json, boost.json
   `.worktrees/` is gitignored. A new worktree needs `composer install` and `npm ci`; Composer's install script creates `.env` and `database/database.sqlite`.
 - One task = one reviewable change (e.g. "migration + model + factory", "matching logic + tests"). If a task touches more than one layer it is probably two tasks.
 - Commit small. Commit messages say *why*. Only push or open PRs when asked.
+- **Every commit subject starts with `CLAUDE - `**, e.g. `CLAUDE - Add saved searches table`, so Adam's commits in between stand out. The hook blocks a `git commit` without it.
 - Hand-back: PR from the feature branch **against our own fork** (`kernig-adam/listings-exercise`), never upstream.
 
 ## Pull requests

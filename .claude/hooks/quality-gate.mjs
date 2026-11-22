@@ -18,6 +18,14 @@ import { resolve } from 'node:path';
 const input = JSON.parse(await new Response(process.stdin).text() || '{}');
 const cmd = input.tool_input?.command ?? '';
 
+// Every commit Claude makes starts "CLAUDE - ", so the history shows which
+// commits are AI-made and which are Adam's. Only Claude's commands reach this
+// hook, so Adam's own commits are unaffected.
+if (/(^|[\s;&|(])git\s+(-C\s+\S+\s+)?commit\b/.test(cmd) && !/--no-edit\b/.test(cmd) && !/CLAUDE - /.test(cmd)) {
+    process.stderr.write('COMMIT BLOCKED: the commit message must start with "CLAUDE - " (see CLAUDE.md).\n');
+    process.exit(2);
+}
+
 if (!/(^|[\s;&|(])(git\s+(-C\s+\S+\s+)?push|gh\s+pr\s+(create|merge|ready))\b/.test(cmd)) process.exit(0);
 
 // Work out which checkout is being pushed: an explicit `git -C <dir>` or

@@ -187,5 +187,16 @@ I haven't changed them. The brief says to flag a pattern I think is wrong rather
 
 **Reviewed:** *pending*
 
+### 6. Claude's commits are prefixed `CLAUDE - `
+
+**Branch:** `claude/quality-gate` · **Model:** Opus 5.5 (main session)
+
+Every commit Claude makes now starts with `CLAUDE - `, so any commit I make in between stands out in `git log`. This sits alongside the `claude/` branch prefix and the `claude` PR label.
+
+- **Enforced, not just a rule:** the same hook now blocks any `git commit` Claude runs without the prefix. The hook only sees Claude's commands, so my own commits are unaffected.
+- Commits made before this rule (entries 3–5) don't have the prefix. I can tell them apart by their `Co-Authored-By: Claude` trailer.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
