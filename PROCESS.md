@@ -180,6 +180,10 @@ I haven't changed them. The brief says to flag a pattern I think is wrong rather
 
 **Why a status check and not just the template:** a checkbox on its own is a convention, and anyone (or any tool) can merge past it. Making it a required check means GitHub enforces it.
 
+**Checks:**
+- The local gate passed before the push.
+- On PR #1 (rewritten in the new template, labelled `claude`, box unticked): `test` passed, `attestation` failed, and GitHub reports the merge as **BLOCKED**. Ticking the box is the only way to unblock it.
+
 **Reviewed:** *pending*
 
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
