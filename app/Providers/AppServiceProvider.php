@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,5 +27,9 @@ class AppServiceProvider extends ServiceProvider
         // envelope around every resource just gets in the way. Paginated
         // collections keep their data/links/meta structure regardless.
         JsonResource::withoutWrapping();
+
+        // Saving and deleting searches: generous for a person, tight for a script.
+        RateLimiter::for('saved-searches', fn (Request $request) => Limit::perMinute(10)
+            ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 }

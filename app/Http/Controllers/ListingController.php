@@ -9,6 +9,7 @@ use App\Http\Resources\BranchResource;
 use App\Http\Resources\ListingResource;
 use App\Models\Branch;
 use App\Models\Listing;
+use App\Support\SearchCriteria;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,26 +20,10 @@ class ListingController extends Controller
      */
     public function index(ListingIndexRequest $request): Response
     {
-        $query = Listing::query()->live();
+        $criteria = $request->criteria();
+        $user = $request->user();
 
-        if ($request->filled('property_type')) {
-            $query->where('property_type', $request->string('property_type'));
-        }
-
-        if ($request->filled('max_price')) {
-            $query->where('price', '<=', $request->integer('max_price'));
-        }
-
-        if ($request->filled('min_bedrooms')) {
-            $query->where('bedrooms', '>=', $request->integer('min_bedrooms'));
-        }
-
-        if ($request->filled('region')) {
-            $region = $request->string('region');
-            $query->whereHas('branch', function ($branchQuery) use ($region) {
-                $branchQuery->where('region', $region);
-            });
-        }
+        $query = Listing::query()->live()->matching($criteria);
 
         // `id` is a tiebreaker: without it, listings sharing a `listed_at` can be
         // ordered differently between page requests, which duplicates or skips
@@ -52,7 +37,12 @@ class ListingController extends Controller
             'listings' => ListingResource::collection($listings),
             'branches' => BranchResource::collection(Branch::query()->orderBy('name')->get()),
             'propertyTypes' => PropertyType::options(),
-            'filters' => $request->only('property_type', 'max_price', 'min_bedrooms', 'region'),
+            'regionOptions' => Branch::regions(),
+            'priceOptions' => SearchCriteria::priceOptions(),
+            'bedroomOptions' => SearchCriteria::bedroomOptions(),
+            'filters' => $criteria->toArray(),
+            // No user only when the demo database is unseeded; nothing can be saved then.
+            'currentSearchSaved' => $user !== null && ! $criteria->isEmpty() && $criteria->isSavedBy($user),
         ]);
     }
 

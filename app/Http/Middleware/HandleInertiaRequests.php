@@ -40,6 +40,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user()?->only('id', 'name', 'email'),
             ],
+            // One-shot messages (e.g. "Search saved.") for the UI to announce.
+            'flash' => [
+                'status' => $request->session()->get('status'),
+            ],
         ];
     }
 }

@@ -354,5 +354,32 @@ Key constraints:
 
 **Reviewed:** *pending*
 
+### 16. Task 1, step 3a: search criteria and saved searches; `composer dev` via WSL
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `backend` (Sonnet), reviewed by the main session (Opus)
+
+I split step 3 in two (3a: search and saved searches; 3b: outbox, relay, consumer, alerts), so each half is reviewable on its own.
+
+**Tests first, this time:** after step 2's slip, I required the agent to write the tests first and show them failing. First run: 59 tests, 55 failing (missing routes and props, `min_price` ignored), then green.
+
+**Built:**
+- `SearchCriteria` (`app/Support`): one typed value object that normalises (sorted sets, blanks absent, paging ignored, region casing), describes a search in plain words, builds the "View homes" URL, and checks for duplicates. The search page, saving, and later the alert matcher all use it, so they can't disagree.
+- `Listing::scopeMatching`: the one definition of a match, replacing the controller's inline filters.
+- A shared rules base (`SearchCriteriaRequest`) for the listings page and for saving.
+- Saved-search routes: index, store, destroy. Destroy loads through the user's relationship, deliberately avoiding route model binding so another user's search is a 404 that doesn't confirm it exists.
+- A 20-search cap, a normalised duplicate check, and a 10-a-minute throttle, with friendly messages on one error key.
+- A bad listings link redirects to the same page minus the bad filters (no loop), with the error shown.
+- Data-driven props: region options from branches, price and bedroom presets, normalised filters, `currentSearchSaved`.
+
+**Found in review, and fixed:** the placeholder Saved searches page rendered two `<h1>`s (an empty one from `AppLayout`, whose required `heading` prop wasn't passed, plus its own). That breaks the one-`h1` semantic rule. Fixed by passing the heading to the layout.
+
+**Known gap until the UI task:** the existing `Listings/Index.vue` region dropdown expects one value but now receives a list, so it won't show the selected region. Filtering still works. The UI task rewrites this page.
+
+**Running the app: back to the README.** `composer dev` failed natively because Pail needs PHP's `pcntl` extension (Unix only), and `--kill-others` then stops every process. I tried WSL Ubuntu (PHP 8.4 with `pcntl` and PCOV, Node 20). `composer dev` ran, but from `/mnt/c` every page took about 6 seconds because of the Windows↔Linux file bridge, and the remedies (a second clone in Linux's filesystem, or a local Docker setup) were turning into a project of their own. I stopped and went back to the README's "Getting started" exactly: `php artisan serve` and `npm run dev` in two terminals. Lesson: the codebase defines how it runs; work with that rather than around it. The WSL packages stay installed, but nothing in the repo depends on them.
+
+**Checks (re-run by me):** 93 tests passed, 590 assertions, **97.8%** coverage; Pint passed; PHPStan 0 errors; build OK.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

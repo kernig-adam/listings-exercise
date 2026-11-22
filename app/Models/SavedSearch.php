@@ -35,6 +35,9 @@ class SavedSearch extends Model
     /** @use HasFactory<SavedSearchFactory> */
     use HasFactory;
 
+    /** Bounds abuse and the cost of matching every new listing against every search. */
+    public const MAX_PER_USER = 20;
+
     // user_id is deliberately absent: it is always set from the authenticated user.
     protected $fillable = [
         'min_price',

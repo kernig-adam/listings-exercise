@@ -31,4 +31,15 @@ class Branch extends Model
     {
         return $this->hasMany(Listing::class);
     }
+
+    /**
+     * The regions we cover, straight from the branches: the one source for the
+     * UI's options and the validation of region filters.
+     *
+     * @return list<string>
+     */
+    public static function regions(): array
+    {
+        return self::query()->distinct()->orderBy('region')->pluck('region')->all();
+    }
 }

@@ -87,8 +87,8 @@ class ListingPageTest extends TestCase
         $this->get('/?max_price=300000&min_bedrooms=2')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->where('filters.max_price', '300000')
-                ->where('filters.min_bedrooms', '2')
+                ->where('filters.max_price', 300000)
+                ->where('filters.min_bedrooms', 2)
             );
     }
 
