@@ -98,6 +98,7 @@ Every task in a plan names its model. Default to the cheapest one that can do it
 
 1. Working feature on the feature branch, all checks green.
 2. `NOTES.md` (about half a page): key decisions and trade-offs, what was left out, what to do next, where it won't hold up (e.g. scale). Record decisions in it **as they are made**, not at the end.
+   - When Adam says "note", "notes" or "add to the notes", write it to `NOTES.md` **straight away, in that same turn**, not only in `PROCESS.md`. Capture his reasoning, not only the decision.
 3. `PROCESS.md`: the time-ordered log of how the work was done, written for the reviewers. After each task, append a numbered entry: branch, what was done and why, which checks ran and their results, and what changed after review. Write it in the first person as the candidate. Keep facts accurate. Do not log a check as passing unless it actually ran.
    - Write the entry **during the task**, as part of finishing it. Never rebuild entries afterwards from transcripts or session exports.
    - End every new entry with `**Reviewed:** *pending*`. Only Adam changes it to a sign-off. Never mark an entry reviewed yourself.
