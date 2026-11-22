@@ -40,6 +40,7 @@ class ListingController extends Controller
             'regionOptions' => Branch::regions(),
             'priceOptions' => SearchCriteria::priceOptions(),
             'bedroomOptions' => SearchCriteria::bedroomOptions(),
+            'bathroomOptions' => SearchCriteria::bathroomOptions(),
             'filters' => $criteria->toArray(),
             'searchDescription' => $criteria->isEmpty() ? null : $criteria->description(),
             // No user only when the demo database is unseeded; nothing can be saved then.

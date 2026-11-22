@@ -76,6 +76,8 @@ abstract class SearchCriteriaRequest extends FormRequest
             'max_price' => ['nullable', 'integer', 'min:0', 'max:'.SearchCriteria::MAX_PRICE],
             'min_bedrooms' => ['nullable', 'integer', 'min:0', 'max:'.SearchCriteria::MAX_BEDROOMS, ...$this->notAbove('max_bedrooms')],
             'max_bedrooms' => ['nullable', 'integer', 'min:0', 'max:'.SearchCriteria::MAX_BEDROOMS],
+            'min_bathrooms' => ['nullable', 'integer', 'min:0', 'max:'.SearchCriteria::MAX_BATHROOMS, ...$this->notAbove('max_bathrooms')],
+            'max_bathrooms' => ['nullable', 'integer', 'min:0', 'max:'.SearchCriteria::MAX_BATHROOMS],
             'region' => ['bail', 'nullable', 'array', 'max:50', $this->allKnown(
                 Branch::regions(),
                 'That region is not one we cover. Choose from the list.',
@@ -95,6 +97,7 @@ abstract class SearchCriteriaRequest extends FormRequest
         return [
             'min_price.lte' => 'The minimum price cannot be higher than the maximum.',
             'min_bedrooms.lte' => 'The minimum bedrooms cannot be more than the maximum.',
+            'min_bathrooms.lte' => 'The minimum bathrooms cannot be more than the maximum.',
         ];
     }
 

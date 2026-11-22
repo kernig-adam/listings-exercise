@@ -21,6 +21,8 @@ final class SearchCriteria
 
     public const MAX_BEDROOMS = 20;
 
+    public const MAX_BATHROOMS = 10;
+
     /** Range-dropdown presets live here once; validation accepts any whole number in range. */
     private const PRICE_PRESETS = [
         50_000, 75_000, 100_000, 125_000, 150_000, 175_000, 200_000, 250_000, 300_000,
@@ -28,6 +30,8 @@ final class SearchCriteria
     ];
 
     private const BEDROOM_PRESETS = [1, 2, 3, 4, 5, 6];
+
+    private const BATHROOM_PRESETS = [1, 2, 3, 4];
 
     /**
      * Regions and types are sorted, unique sets so equal searches compare equal
@@ -41,6 +45,8 @@ final class SearchCriteria
         public readonly ?int $maxPrice = null,
         public readonly ?int $minBedrooms = null,
         public readonly ?int $maxBedrooms = null,
+        public readonly ?int $minBathrooms = null,
+        public readonly ?int $maxBathrooms = null,
         public readonly array $regions = [],
         public readonly array $propertyTypes = [],
     ) {}
@@ -60,6 +66,8 @@ final class SearchCriteria
             $int('max_price'),
             $int('min_bedrooms'),
             $int('max_bedrooms'),
+            $int('min_bathrooms'),
+            $int('max_bathrooms'),
             array_map('strval', (array) ($input['region'] ?? [])),
             array_map(PropertyType::from(...), array_map('strval', (array) ($input['property_type'] ?? []))),
         );
@@ -72,6 +80,8 @@ final class SearchCriteria
             $search->max_price,
             $search->min_bedrooms,
             $search->max_bedrooms,
+            $search->min_bathrooms,
+            $search->max_bathrooms,
             $search->regions->pluck('region')->all(),
             $search->propertyTypes->pluck('property_type')->all(),
         );
@@ -81,7 +91,7 @@ final class SearchCriteria
      * @param  list<string>  $regions
      * @param  list<PropertyType>  $propertyTypes
      */
-    private static function normalised(?int $minPrice, ?int $maxPrice, ?int $minBedrooms, ?int $maxBedrooms, array $regions, array $propertyTypes): self
+    private static function normalised(?int $minPrice, ?int $maxPrice, ?int $minBedrooms, ?int $maxBedrooms, ?int $minBathrooms, ?int $maxBathrooms, array $regions, array $propertyTypes): self
     {
         $regions = array_values(array_unique($regions));
         sort($regions);
@@ -89,7 +99,7 @@ final class SearchCriteria
         $propertyTypes = array_values(array_unique($propertyTypes, SORT_REGULAR));
         usort($propertyTypes, fn (PropertyType $a, PropertyType $b) => $a->value <=> $b->value);
 
-        return new self($minPrice, $maxPrice, $minBedrooms, $maxBedrooms, $regions, $propertyTypes);
+        return new self($minPrice, $maxPrice, $minBedrooms, $maxBedrooms, $minBathrooms, $maxBathrooms, $regions, $propertyTypes);
     }
 
     public function isEmpty(): bool
@@ -118,7 +128,7 @@ final class SearchCriteria
     /**
      * Columns for a SavedSearch row; regions and types go in their own tables.
      *
-     * @return array{min_price: int|null, max_price: int|null, min_bedrooms: int|null, max_bedrooms: int|null}
+     * @return array{min_price: int|null, max_price: int|null, min_bedrooms: int|null, max_bedrooms: int|null, min_bathrooms: int|null, max_bathrooms: int|null}
      */
     public function attributes(): array
     {
@@ -127,6 +137,8 @@ final class SearchCriteria
             'max_price' => $this->maxPrice,
             'min_bedrooms' => $this->minBedrooms,
             'max_bedrooms' => $this->maxBedrooms,
+            'min_bathrooms' => $this->minBathrooms,
+            'max_bathrooms' => $this->maxBathrooms,
         ];
     }
 
@@ -158,7 +170,7 @@ final class SearchCriteria
     /**
      * Echoed to the UI under the same keys as the form fields.
      *
-     * @return array{min_price: int|null, max_price: int|null, min_bedrooms: int|null, max_bedrooms: int|null, region: list<string>, property_type: list<string>}
+     * @return array{min_price: int|null, max_price: int|null, min_bedrooms: int|null, max_bedrooms: int|null, min_bathrooms: int|null, max_bathrooms: int|null, region: list<string>, property_type: list<string>}
      */
     public function toArray(): array
     {
@@ -170,7 +182,7 @@ final class SearchCriteria
     }
 
     /**
-     * Plain words, always in the same order: regions, types, price, bedrooms.
+     * Plain words, always in the same order: regions, types, price, bedrooms, bathrooms.
      * Price is always present ("Any price") so a description is never blank.
      */
     public function description(): string
@@ -188,6 +200,11 @@ final class SearchCriteria
         $beds = $this->bedroomDescription();
         if ($beds !== null) {
             $parts[] = $beds;
+        }
+
+        $baths = $this->bathroomDescription();
+        if ($baths !== null) {
+            $parts[] = $baths;
         }
 
         return implode(' · ', $parts);
@@ -209,6 +226,14 @@ final class SearchCriteria
         return array_map(fn (int $beds) => ['value' => $beds, 'label' => (string) $beds], self::BEDROOM_PRESETS);
     }
 
+    /**
+     * @return list<array{value: int, label: string}>
+     */
+    public static function bathroomOptions(): array
+    {
+        return array_map(fn (int $baths) => ['value' => $baths, 'label' => (string) $baths], self::BATHROOM_PRESETS);
+    }
+
     private function priceDescription(): string
     {
         return match (true) {
@@ -228,6 +253,22 @@ final class SearchCriteria
             $this->maxBedrooms !== null => 'Up to '.self::beds($this->maxBedrooms),
             default => null,
         };
+    }
+
+    private function bathroomDescription(): ?string
+    {
+        return match (true) {
+            $this->minBathrooms !== null && $this->maxBathrooms === $this->minBathrooms => self::baths($this->minBathrooms),
+            $this->minBathrooms !== null && $this->maxBathrooms !== null => $this->minBathrooms.'–'.self::baths($this->maxBathrooms),
+            $this->minBathrooms !== null => $this->minBathrooms.'+ baths',
+            $this->maxBathrooms !== null => 'Up to '.self::baths($this->maxBathrooms),
+            default => null,
+        };
+    }
+
+    private static function baths(int $count): string
+    {
+        return $count === 1 ? '1 bath' : "{$count} baths";
     }
 
     private static function beds(int $count): string

@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * Every criterion is optional and an empty one means "any": a null price or
- * bedroom bound is unbounded on that side, and a search with no region (or no
+ * Every criterion is optional and an empty one means "any": a null price,
+ * bedroom or bathroom bound is unbounded on that side, and a search with no region (or no
  * property type) rows matches every region (or type). The "at least one
  * criterion" rule is a validation concern, not a data one.
  *
@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $max_price
  * @property int|null $min_bedrooms
  * @property int|null $max_bedrooms
+ * @property int|null $min_bathrooms
+ * @property int|null $max_bathrooms
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property-read User $user
@@ -45,6 +47,8 @@ class SavedSearch extends Model
         'max_price',
         'min_bedrooms',
         'max_bedrooms',
+        'min_bathrooms',
+        'max_bathrooms',
     ];
 
     /**
@@ -57,6 +61,8 @@ class SavedSearch extends Model
             'max_price' => 'integer',
             'min_bedrooms' => 'integer',
             'max_bedrooms' => 'integer',
+            'min_bathrooms' => 'integer',
+            'max_bathrooms' => 'integer',
         ];
     }
 
@@ -105,6 +111,8 @@ class SavedSearch extends Model
             ->where(fn (Builder $q) => $q->whereNull('max_price')->orWhere('max_price', '>=', $listing->price))
             ->where(fn (Builder $q) => $q->whereNull('min_bedrooms')->orWhere('min_bedrooms', '<=', $listing->bedrooms))
             ->where(fn (Builder $q) => $q->whereNull('max_bedrooms')->orWhere('max_bedrooms', '>=', $listing->bedrooms))
+            ->where(fn (Builder $q) => $q->whereNull('min_bathrooms')->orWhere('min_bathrooms', '<=', $listing->bathrooms))
+            ->where(fn (Builder $q) => $q->whereNull('max_bathrooms')->orWhere('max_bathrooms', '>=', $listing->bathrooms))
             ->where(fn (Builder $q) => $q->whereDoesntHave('regions')->orWhereHas(
                 'regions',
                 fn (Builder $r) => $r->where('region', $listing->branch->region),

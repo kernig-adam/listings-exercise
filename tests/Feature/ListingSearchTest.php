@@ -105,6 +105,34 @@ class ListingSearchTest extends TestCase
         $this->assertSame([2000, 3000, 4000], $prices);
     }
 
+    public function test_bathroom_range_is_inclusive_at_both_ends(): void
+    {
+        // Arrange
+        foreach ([1, 2, 3, 4, 5] as $baths) {
+            Listing::factory()->live()->create(['bathrooms' => $baths, 'price' => $baths * 1000]);
+        }
+
+        // Act
+        $prices = $this->listingPrices('/?min_bathrooms=2&max_bathrooms=4');
+
+        // Assert
+        $this->assertSame([2000, 3000, 4000], $prices);
+    }
+
+    public function test_links_without_bathrooms_are_unchanged(): void
+    {
+        // Arrange
+        foreach ([1, 3] as $baths) {
+            Listing::factory()->live()->create(['bathrooms' => $baths, 'bedrooms' => 2, 'price' => $baths * 1000]);
+        }
+
+        // Act
+        $prices = $this->listingPrices('/?min_bedrooms=2');
+
+        // Assert
+        $this->assertSame([1000, 3000], $prices);
+    }
+
     public function test_several_regions_and_types_match_any_of_them(): void
     {
         // Arrange
@@ -197,6 +225,8 @@ class ListingSearchTest extends TestCase
                     'max_price' => 300000,
                     'min_bedrooms' => 2,
                     'max_bedrooms' => null,
+                    'min_bathrooms' => null,
+                    'max_bathrooms' => null,
                     'region' => ['Liverpool', 'Newcastle'],
                     'property_type' => ['detached', 'flat'],
                 ])
@@ -234,6 +264,9 @@ class ListingSearchTest extends TestCase
             'min above max price' => ['min_price=300&max_price=200', 'min_price'],
             'min above max bedrooms' => ['min_bedrooms=4&max_bedrooms=2', 'min_bedrooms'],
             'too many bedrooms' => ['max_bedrooms=21', 'max_bedrooms'],
+            'min above max bathrooms' => ['min_bathrooms=3&max_bathrooms=1', 'min_bathrooms'],
+            'too many bathrooms' => ['max_bathrooms=11', 'max_bathrooms'],
+            'negative bathrooms' => ['min_bathrooms=-1', 'min_bathrooms'],
             'nested garbage' => ['region[][x]=1', 'region'],
         ];
     }
@@ -302,6 +335,7 @@ class ListingSearchTest extends TestCase
                 ->has('propertyTypes', count(PropertyType::cases()))
                 ->has('priceOptions.0', fn (AssertableInertia $option) => $option->hasAll('value', 'label'))
                 ->has('bedroomOptions.0', fn (AssertableInertia $option) => $option->hasAll('value', 'label'))
+                ->has('bathroomOptions.0', fn (AssertableInertia $option) => $option->hasAll('value', 'label'))
             );
     }
 

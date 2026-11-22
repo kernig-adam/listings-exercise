@@ -50,7 +50,7 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 - **Filters in a left panel** on desktop, behind a "Filters" button on mobile.
   - **Regions and property types:** pill-style chips over native checkboxes (`fieldset` + `legend`). Options from props (data-driven), never hard-coded.
-  - **Price and bedrooms:** min/max **preset dropdowns** from props ("No min" … "No max"). The max hides values below the chosen min. **P3:** a non-preset value in the URL (e.g. £180,000) appears as an extra, selected option.
+  - **Price, bedrooms and bathrooms:** min/max **preset dropdowns** from props (`priceOptions`, `bedroomOptions`, `bathroomOptions`) ("No min" … "No max"). The max hides values below the chosen min. **P3:** a non-preset value in the URL (e.g. £180,000) appears as an extra, selected option.
   - The existing **"Search" button** applies filters to the URL. **Always comma-separated** (`region=Liverpool,Newcastle`), never `region[0]=` (the baseline found that form leaves the select blank while filtering).
   - **Field errors from a bad link** (e.g. `?region=Atlantis`) are shown next to their field. The baseline showed every home silently.
   - A **skip link** to the results, before the filters.

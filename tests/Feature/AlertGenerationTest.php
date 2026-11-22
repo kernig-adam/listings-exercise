@@ -276,6 +276,23 @@ class AlertGenerationTest extends TestCase
         $this->assertEqualsCanonicalizing([$first->id, $second->id], $linked);
     }
 
+    public function test_alerts_match_on_bathrooms_and_ignore_searches_without_them(): void
+    {
+        // Arrange
+        $matching = SavedSearch::factory()->for($this->user)->anyCriteria()->create(['min_bathrooms' => 2]);
+        $anyBaths = SavedSearch::factory()->for($this->user)->anyCriteria()->create(['min_bedrooms' => 3]);
+        $tooMany = SavedSearch::factory()->for($this->user)->anyCriteria()->create(['min_bathrooms' => 3]);
+        $this->goLive(['bathrooms' => 2]);
+
+        // Act
+        Artisan::call('outbox:relay');
+
+        // Assert
+        $linked = Alert::query()->sole()->savedSearches->pluck('id')->all();
+        $this->assertEqualsCanonicalizing([$matching->id, $anyBaths->id], $linked);
+        $this->assertNotContains($tooMany->id, $linked);
+    }
+
     public function test_the_inverse_scope_agrees_with_the_listing_scope(): void
     {
         // Arrange
@@ -288,6 +305,9 @@ class AlertGenerationTest extends TestCase
         $make()->create(['min_bedrooms' => 3]);
         $make()->create(['max_bedrooms' => 2]);
         $make()->create(['min_bedrooms' => 2, 'max_bedrooms' => 3]);
+        $make()->create(['min_bathrooms' => 2]);
+        $make()->create(['max_bathrooms' => 1]);
+        $make()->create(['min_bathrooms' => 1, 'max_bathrooms' => 2]);
         $make()->create();
         $make()->inRegions(['Leeds'])->create();
         $make()->inRegions(['York', 'Leeds'])->create();
@@ -296,13 +316,13 @@ class AlertGenerationTest extends TestCase
         $make()->ofTypes([PropertyType::Flat, PropertyType::Detached])->create();
         $make()->inRegions(['York'])->ofTypes([PropertyType::Detached])->create(['max_bedrooms' => 4]);
         $listings = collect([
-            [$leeds, 150_000, 3, PropertyType::Flat],
-            [$leeds, 99_000, 1, PropertyType::Detached],
-            [$york, 250_000, 4, PropertyType::Detached],
-            [$york, 150_000, 2, PropertyType::Flat],
-            [$leeds, 100_000, 5, PropertyType::Detached],
+            [$leeds, 150_000, 3, PropertyType::Flat, 2],
+            [$leeds, 99_000, 1, PropertyType::Detached, 1],
+            [$york, 250_000, 4, PropertyType::Detached, 3],
+            [$york, 150_000, 2, PropertyType::Flat, 1],
+            [$leeds, 100_000, 5, PropertyType::Detached, 2],
         ])->map(fn (array $row) => Listing::factory()->for($row[0])->live()->create([
-            'price' => $row[1], 'bedrooms' => $row[2], 'property_type' => $row[3],
+            'price' => $row[1], 'bedrooms' => $row[2], 'property_type' => $row[3], 'bathrooms' => $row[4],
         ]));
         $searches = SavedSearch::query()->with(['regions', 'propertyTypes'])->get();
 

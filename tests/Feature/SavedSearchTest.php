@@ -35,6 +35,8 @@ class SavedSearchTest extends TestCase
             'min_price' => '100000',
             'max_price' => '200000',
             'min_bedrooms' => '2',
+            'min_bathrooms' => '1',
+            'max_bathrooms' => '2',
             'region' => 'newcastle,Liverpool',
             'property_type' => 'flat,detached',
         ]);
@@ -48,6 +50,8 @@ class SavedSearchTest extends TestCase
         $this->assertSame(200_000, $search->max_price);
         $this->assertSame(2, $search->min_bedrooms);
         $this->assertNull($search->max_bedrooms);
+        $this->assertSame(1, $search->min_bathrooms);
+        $this->assertSame(2, $search->max_bathrooms);
         $this->assertEqualsCanonicalizing(['Liverpool', 'Newcastle'], $search->regions->pluck('region')->all());
         $this->assertEqualsCanonicalizing(
             [PropertyType::Flat, PropertyType::Detached],
@@ -97,6 +101,10 @@ class SavedSearchTest extends TestCase
         return [
             'min above max price' => [['min_price' => 300, 'max_price' => 200], 'min_price'],
             'min above max bedrooms' => [['min_bedrooms' => 4, 'max_bedrooms' => 2], 'min_bedrooms'],
+            'min above max bathrooms' => [['min_bathrooms' => 3, 'max_bathrooms' => 1], 'min_bathrooms'],
+            'negative bathrooms' => [['max_bathrooms' => -1], 'max_bathrooms'],
+            'too many bathrooms' => [['max_bathrooms' => 11], 'max_bathrooms'],
+            'decimal bathrooms' => [['min_bathrooms' => 1.5], 'min_bathrooms'],
             'unknown type' => [['property_type' => 'castle'], 'property_type'],
             'unknown region' => [['region' => 'Atlantis'], 'region'],
             'negative price' => [['min_price' => -5], 'min_price'],
@@ -138,6 +146,41 @@ class SavedSearchTest extends TestCase
         // Assert
         $response->assertSessionHasErrors(['criteria' => 'You already have this search saved.']);
         $this->assertSame(1, $this->user->savedSearches()->count());
+    }
+
+    public function test_the_bathroom_message_is_friendly(): void
+    {
+        // Act
+        $response = $this->postJson(route('saved-searches.store'), ['min_bathrooms' => 3, 'max_bathrooms' => 1]);
+
+        // Assert
+        $response->assertJsonValidationErrors(['min_bathrooms' => 'The minimum bathrooms cannot be more than the maximum.']);
+    }
+
+    public function test_the_same_bathrooms_make_a_duplicate(): void
+    {
+        // Arrange
+        $this->post(route('saved-searches.store'), ['region' => 'Liverpool', 'min_bathrooms' => 2]);
+
+        // Act
+        $response = $this->post(route('saved-searches.store'), ['region' => 'Liverpool', 'min_bathrooms' => '2']);
+
+        // Assert
+        $response->assertSessionHasErrors(['criteria' => 'You already have this search saved.']);
+        $this->assertSame(1, $this->user->savedSearches()->count());
+    }
+
+    public function test_different_bathrooms_are_not_a_duplicate(): void
+    {
+        // Arrange
+        $this->post(route('saved-searches.store'), ['region' => 'Liverpool', 'min_bathrooms' => 2]);
+
+        // Act
+        $response = $this->post(route('saved-searches.store'), ['region' => 'Liverpool', 'min_bathrooms' => 3]);
+
+        // Assert
+        $response->assertSessionHasNoErrors();
+        $this->assertSame(2, $this->user->savedSearches()->count());
     }
 
     public function test_a_different_search_is_not_a_duplicate(): void
@@ -301,6 +344,12 @@ class SavedSearchTest extends TestCase
             'bedroom range' => [['min_price' => null, 'max_price' => null, 'min_bedrooms' => 2, 'max_bedrooms' => 3], 'Any price · 2–3 beds'],
             'exact beds' => [['min_price' => null, 'max_price' => null, 'min_bedrooms' => 3, 'max_bedrooms' => 3], 'Any price · 3 beds'],
             'single bed' => [['min_price' => null, 'max_price' => null, 'min_bedrooms' => 1, 'max_bedrooms' => 1], 'Any price · 1 bed'],
+            'bath minimum' => [['min_price' => null, 'max_price' => null, 'min_bathrooms' => 2], 'Any price · 2+ baths'],
+            'bath range' => [['min_price' => null, 'max_price' => null, 'min_bathrooms' => 1, 'max_bathrooms' => 2], 'Any price · 1–2 baths'],
+            'exact baths' => [['min_price' => null, 'max_price' => null, 'min_bathrooms' => 2, 'max_bathrooms' => 2], 'Any price · 2 baths'],
+            'single bath' => [['min_price' => null, 'max_price' => null, 'min_bathrooms' => 1, 'max_bathrooms' => 1], 'Any price · 1 bath'],
+            'max baths' => [['min_price' => null, 'max_price' => null, 'max_bathrooms' => 2], 'Any price · Up to 2 baths'],
+            'beds then baths' => [['min_price' => null, 'max_price' => null, 'min_bedrooms' => 3, 'min_bathrooms' => 2], 'Any price · 3+ beds · 2+ baths'],
             'max beds' => [['min_price' => null, 'max_price' => null, 'max_bedrooms' => 2], 'Any price · Up to 2 beds'],
         ];
     }

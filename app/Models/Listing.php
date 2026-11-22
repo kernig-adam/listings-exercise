@@ -126,6 +126,8 @@ class Listing extends Model
             ->when($criteria->maxPrice !== null, fn (Builder $q) => $q->where('price', '<=', $criteria->maxPrice))
             ->when($criteria->minBedrooms !== null, fn (Builder $q) => $q->where('bedrooms', '>=', $criteria->minBedrooms))
             ->when($criteria->maxBedrooms !== null, fn (Builder $q) => $q->where('bedrooms', '<=', $criteria->maxBedrooms))
+            ->when($criteria->minBathrooms !== null, fn (Builder $q) => $q->where('bathrooms', '>=', $criteria->minBathrooms))
+            ->when($criteria->maxBathrooms !== null, fn (Builder $q) => $q->where('bathrooms', '<=', $criteria->maxBathrooms))
             ->when($criteria->propertyTypes !== [], fn (Builder $q) => $q->whereIn('property_type', $criteria->propertyTypes))
             ->when($criteria->regions !== [], fn (Builder $q) => $q->whereHas(
                 'branch',

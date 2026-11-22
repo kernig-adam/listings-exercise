@@ -279,6 +279,8 @@ class SavedSearchDataTest extends TestCase
         $this->assertNull($search->max_price);
         $this->assertNull($search->min_bedrooms);
         $this->assertNull($search->max_bedrooms);
+        $this->assertNull($search->min_bathrooms);
+        $this->assertNull($search->max_bathrooms);
         $this->assertCount(0, $search->regions);
         $this->assertCount(0, $search->propertyTypes);
     }

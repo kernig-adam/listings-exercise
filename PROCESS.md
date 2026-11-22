@@ -506,5 +506,24 @@ I split the UI into 2a (foundations) and 2b (pages), so each is reviewable on it
 
 **Reviewed:** *pending*
 
+### 21. Step 2b backend: alerts read via PATCH, and bathrooms as a criterion
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `backend` (Sonnet) ×2, reviewed by the main session (Opus)
+
+*(This entry covers commit `372e48a` too; I missed logging it at the time and caught it before the next commit.)*
+
+**Viewing alerts is now a safe GET; reading is a PATCH.** I wanted the Alerts bell to prefetch, which exposed a design flaw: `GET /alerts` marked alerts read as a side effect, so a hover-prefetch would have cleared "New" badges unseen. I questioned the semantics myself: a DELETE would mean the alert is removed, but a read alert stays (it loses its "New" pill and feeds "First alerted"), so it's a one-field change, a **PATCH**, sent in one batch of IDs per page view.
+- **Built, tests first** (15 errors and 3 failures first, including the guest PATCH returning 405): `GET` has no side effects; `PATCH /alerts` (`alerts.read`) takes 1–15 distinct alert IDs and `read: true`, checks ownership before any write, and returns a **404** for any foreign or unknown ID, so nothing is confirmed. It marks every alert for those homes read without re-sorting, has its own per-account rate limit, and gives guests a 401.
+
+**Bathrooms (min–max).** I noticed listings hold a `bathrooms` count the search never exposed, and had it built before the UI work so the filter panel includes it from the start.
+- An **additive, nullable migration**: existing saved searches mean "any" and keep matching (a test proves it).
+- It follows the bedrooms pattern through `SearchCriteria`, validation, both match scopes, presets and the description ("2+ baths").
+- The **parity test** now includes bathroom bounds, so alert matching can't drift from search.
+- Tests first: 13 failing first. The agent caught and split one of its own tests that had asserted after a second request.
+
+**Checks (re-run by me):** PATCH: 167 tests, 98.5% coverage. Bathrooms: **186 tests passed, 989 assertions, 98.6%** coverage; Pint passed; PHPStan 0 errors; build OK; migration applied to the dev database.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

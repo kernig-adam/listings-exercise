@@ -25,6 +25,8 @@ class SavedSearchFactory extends Factory
             'max_price' => 200000,
             'min_bedrooms' => null,
             'max_bedrooms' => null,
+            'min_bathrooms' => null,
+            'max_bathrooms' => null,
         ];
     }
 
@@ -38,6 +40,8 @@ class SavedSearchFactory extends Factory
             'max_price' => null,
             'min_bedrooms' => null,
             'max_bedrooms' => null,
+            'min_bathrooms' => null,
+            'max_bathrooms' => null,
         ]);
     }
 
