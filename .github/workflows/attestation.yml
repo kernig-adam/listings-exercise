@@ -1,0 +1,25 @@
+name: Attestation
+
+# Blocks merging until a human ticks the attestation box in the PR description
+# (see .github/pull_request_template.md). Editing the description re-runs it.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  attestation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the attestation box is ticked
+        env:
+          # Passed through env, never interpolated into the script: the body is user input.
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$BODY" | grep -qiE '^\s*- \[x\] I am aware this PR was written with AI'; then
+            echo "Attestation ticked."
+          else
+            echo "::error::Attestation not ticked. A human must tick the box in the PR description's Attestation section."
+            exit 1
+          fi

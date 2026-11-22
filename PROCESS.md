@@ -165,5 +165,22 @@ I haven't changed them. The brief says to flag a pattern I think is wrong rather
 
 **Reviewed:** *pending*
 
+### 5. Task 3: one PR process, with human attestation
+
+**Branch:** `claude/pr-process` (worktree, from `claude/quality-gate`; merges back into it) · **Model:** Opus 5.5 (main session)
+
+**Goal:** every PR reads the same way, AI-written work is visibly labelled, and nothing merges until a human has explicitly accepted it.
+
+**What I added:**
+- **PR template** (`.github/pull_request_template.md`) with five sections: **Task** (what and why), **Objective** (the outcome), **Testing** (what's tested, with real results), **Notes** (screenshots, trade-offs, gaps) and **Attestation**: an unticked box saying I'm aware the PR was written with AI and that I've reviewed and approved it.
+- **Rules for Claude** in `CLAUDE.md`: fill in every section, never claim a result that didn't run, add the `claude` label, and **never tick the attestation box** or merge.
+- **`claude` label** on the repo, so AI-written PRs can be filtered at a glance.
+- **`Attestation` workflow:** fails the PR until the box is ticked. It re-runs whenever the description is edited, so ticking the box is enough to turn it green. The description is passed in as an environment variable, never pasted into the script, because PR text is user input and could otherwise inject shell commands. It runs with no token permissions.
+- **Branch ruleset:** `main` and `feature/**` require the `attestation` and `test` (CI) checks before anything merges, with no bypass, so it applies to me as admin too. Attestation is now a branch rule, not a convention.
+
+**Why a status check and not just the template:** a checkbox on its own is a convention, and anyone (or any tool) can merge past it. Making it a required check means GitHub enforces it.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

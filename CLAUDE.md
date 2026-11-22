@@ -74,6 +74,22 @@ php artisan boost:install     # choose Claude Code; writes .mcp.json, boost.json
 - Commit small. Commit messages say *why*. Only push or open PRs when asked.
 - Hand-back: PR from the feature branch **against our own fork** (`kernig-adam/listings-exercise`), never upstream.
 
+## Pull requests
+
+Every PR uses [.github/pull_request_template.md](.github/pull_request_template.md). Fill in every section:
+
+- **Task:** what is being done, and why.
+- **Objective:** what we are trying to achieve (the outcome, not the steps).
+- **Testing:** what the tests check for, and the checks that ran, with real results (test count, coverage %). Never claim a result that didn't run.
+- **Notes:** screenshots for UI changes, trade-offs, follow-ups, known gaps. Write "None" rather than deleting the section.
+- **Attestation:** leave the box **unticked**. Only a human ticks it. Never tick it, edit it, or reword it. The `Attestation` check matches its exact wording and blocks the merge until it's ticked.
+
+Also:
+- Add the **`claude`** label: `gh pr create --label claude ...`.
+- Title: imperative and specific, e.g. "Alert users when a listing goes live".
+- End the body with the Claude Code attribution line.
+- Never merge a PR, and never use `--admin` to bypass branch rules.
+
 ## Model per task
 
 Every task in a plan names its model. Default to the cheapest one that can do it well.
