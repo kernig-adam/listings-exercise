@@ -141,6 +141,11 @@ To be clear: **I would have taken the Docker approach.** I'm running native PHP 
 - **Dependabot (or Renovate) security updates** on the fork, so advisories turn into PRs instead of waiting for someone to notice.
 - In the Docker approach I'd prefer, an **image scan** (for example Trivy or ECR's built-in scanning) before deploy.
 
+**What I'd add next: coverage reports on the PR.** Noted, not built. Today CI enforces the 90% floor and prints the coverage table in the job log, but a reviewer has to open the log to see it. I'd like the coverage report visible on the PR itself:
+- **Job summary (no new dependencies):** write PHPUnit's text coverage to `$GITHUB_STEP_SUMMARY`, so it shows on the PR's checks page.
+- **A PR comment with the change in coverage:** total coverage against the base branch, plus coverage of the lines the PR changed ("patch coverage"), updated on each push. This needs a Clover report (`--coverage-clover`), `pull-requests: write`, and either a small script or a tool such as Codecov.
+- Patch coverage matters more than the total. A PR can keep the total above 90% while leaving its own new code untested.
+
 **Local setup.** Chocolatey first installed PHP 8.6, which doesn't match CI (8.4), and no Windows PCOV build exists for 8.6. For parity I downgraded to PHP 8.4.28 and installed the official PCOV 1.0.12 DLL for 8.4 (NTS, x64). I enabled `pdo_sqlite`, `sqlite3`, `fileinfo`, `zip`, `mbstring`, `openssl`, `curl` and `pcov` in `php.ini`, and kept a backup.
 
 **Checks (native PHP 8.4.28 + PCOV):**
