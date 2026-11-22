@@ -8,6 +8,7 @@ use App\Models\SavedSearch;
 use App\Support\SearchCriteria;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 /**
  * @mixin Alert
@@ -15,7 +16,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class AlertResource extends JsonResource
 {
     /**
-     * Expects `listing.branch` and `savedSearches.regions|propertyTypes` to be eager loaded.
+     * Expects `listing.branch` and `savedSearches.regions|propertyTypes` to be eager
+     * loaded, and the `history` aggregate (first_alerted_at, alert_count, unread_count)
+     * set by AlertController.
      *
      * @return array<string, mixed>
      */
@@ -29,7 +32,10 @@ class AlertResource extends JsonResource
             'id' => $this->id,
             'reason' => $this->reason->value,
             'reason_label' => $this->reason->label(),
-            'is_new' => $this->read_at === null,
+            // Any unread alert for the home, as it was before this view marked them read.
+            'is_new' => $this->history->unread_count > 0,
+            'first_alerted_at' => Carbon::parse($this->history->first_alerted_at)->toIso8601String(),
+            'alert_count' => (int) $this->history->alert_count,
             // updated_at, not created_at: a refreshed alert is re-announced.
             'alerted_at' => $this->updated_at->toIso8601String(),
             'listing' => new ListingResource($this->listing),

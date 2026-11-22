@@ -448,5 +448,32 @@ The UI task now includes these decisions, a new **step 1b** (backend prep: P1, P
 
 **Reviewed:** *pending*
 
+### 19. Task 2, step 1b: backend prep for the UI
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `backend` (Sonnet) · **Images:** converted by the main session
+
+**Tests first (AAA):** 11 new or changed tests failing first (missing props, two cards for one home, unread counting alerts rather than homes, wrong redirect page), then green.
+
+**Built:**
+- **P1:** a `searchDescription` prop. **P7:** `savedSearchCount` (the total, not the page's count).
+- **P6:** a delete redirects to the last page that still has searches. The page comes from the referer, as a clamped whole number only, so it's safe; with no referer it falls back to page 1.
+- **P8, one card per home:**
+  - `Alert::scopeLatestPerListing`, a portable `NOT EXISTS` query (no window functions).
+  - One grouped query per page for `first_alerted_at`, `alert_count` and the "new" state.
+  - Viewing marks every alert for the shown homes read.
+  - The unread count counts **homes**, matching what the buyer sees.
+- **Images:** the 5 photos converted to **WebP at native size** (about 218 KB, from about 1.7 MB of PNG); the PNG originals removed. `image_url` picked deterministically by listing ID. The agent also added a constant map of each photo's pixel size plus `image_width`/`image_height` props. **I had those removed:** hard-coded image dimensions in the backend aren't data-driven, and aspect ratio is a UI concern, handled with a named Tailwind aspect token on the card's image box. I dropped the agent's `CREDITS.md`: the Unsplash licence doesn't require attribution, and a credits file for placeholder photos isn't relevant to this exercise.
+
+**Found in review:**
+- **My own slip:** I first upscaled the 500px photos to 640px, which only adds blur, then redid them at native size.
+- **A known coupling, recorded, not rewritten:** `AlertResource` needs the controller to attach a `history` aggregate. Built anywhere else without it, it fails loudly (fail fast) rather than showing wrong data. A cleaner long-term version would load the counts through an Eloquent relationship.
+- The agent found and fixed its own bug while testing: a reused query builder kept an `id` filter, giving the wrong page count.
+
+**Security gap I found reviewing the code: no authentication guard.** Reading `AlertController` I asked what happens if someone just hits the endpoint. Authorisation (whose data) was solid, but nothing checked *that* a user was signed in. The routes trusted the auth stub, so a guest crashed on `null->alerts()` with a 500. Tests first: `AuthenticationTest` showed all four user-scoped routes returning 500. The fix is a `RequireUser` middleware on a route group, returning a clean 401 before any controller runs; listings stay public. Laravel's `auth` middleware wasn't usable: the stub sets the request's user resolver, not the auth guard, so `auth` would have refused even the demo user. The stub is untouched. Confirmed on the running app: the demo user still gets 200 on every page.
+
+**Checks (re-run by me):** 151 tests passed, 820 assertions, **98.4%** coverage; Pint passed; PHPStan 0 errors; build OK.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

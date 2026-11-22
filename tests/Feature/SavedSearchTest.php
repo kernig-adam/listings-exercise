@@ -354,6 +354,71 @@ class SavedSearchTest extends TestCase
         $this->assertModelMissing($search);
     }
 
+    public function test_deleting_the_last_search_on_a_page_returns_to_the_new_last_page(): void
+    {
+        // Arrange
+        SavedSearch::factory(16)->for($this->user)->create();
+        $onlyOnPageTwo = $this->user->savedSearches()->orderBy('created_at')->orderBy('id')->firstOrFail();
+
+        // Act
+        $response = $this->delete(
+            route('saved-searches.destroy', $onlyOnPageTwo->id),
+            [],
+            ['Referer' => route('saved-searches.index', ['page' => 2])],
+        );
+
+        // Assert
+        $response->assertRedirect(route('saved-searches.index'))
+            ->assertSessionHas('status', 'Search deleted.');
+    }
+
+    public function test_deleting_a_search_keeps_the_page_while_it_still_has_searches(): void
+    {
+        // Arrange
+        SavedSearch::factory(17)->for($this->user)->create();
+        $search = $this->user->savedSearches()->firstOrFail();
+
+        // Act
+        $response = $this->delete(
+            route('saved-searches.destroy', $search->id),
+            [],
+            ['Referer' => route('saved-searches.index', ['page' => 2])],
+        );
+
+        // Assert
+        $response->assertRedirect(route('saved-searches.index', ['page' => 2]));
+    }
+
+    public function test_a_stale_page_is_clamped_to_the_last_page_with_searches(): void
+    {
+        // Arrange
+        SavedSearch::factory(2)->for($this->user)->create();
+        $search = $this->user->savedSearches()->firstOrFail();
+
+        // Act
+        $response = $this->delete(
+            route('saved-searches.destroy', $search->id),
+            [],
+            ['Referer' => route('saved-searches.index', ['page' => 9])],
+        );
+
+        // Assert
+        $response->assertRedirect(route('saved-searches.index'));
+    }
+
+    public function test_the_index_shares_the_total_count_across_pages(): void
+    {
+        // Arrange
+        SavedSearch::factory(18)->for($this->user)->create();
+        SavedSearch::factory()->for(User::factory()->create())->create();
+
+        // Act
+        $response = $this->get(route('saved-searches.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('savedSearchCount', 18));
+    }
+
     public function test_deleting_a_search_keeps_its_alerts(): void
     {
         // Arrange

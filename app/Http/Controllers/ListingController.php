@@ -41,6 +41,7 @@ class ListingController extends Controller
             'priceOptions' => SearchCriteria::priceOptions(),
             'bedroomOptions' => SearchCriteria::bedroomOptions(),
             'filters' => $criteria->toArray(),
+            'searchDescription' => $criteria->isEmpty() ? null : $criteria->description(),
             // No user only when the demo database is unseeded; nothing can be saved then.
             'currentSearchSaved' => $user !== null && ! $criteria->isEmpty() && $criteria->isSavedBy($user),
         ]);

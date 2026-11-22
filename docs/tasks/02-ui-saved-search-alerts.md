@@ -26,7 +26,7 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 - **P6:** deleting a saved search redirects to the last page that still has searches (never a false empty page).
 - **P7:** the Saved searches page already gets `savedSearchLimit`; add the user's total (`savedSearchCount`), so "3 of 20 saved" isn't computed from one page.
 - **P8:** the Alerts page shows **one card per home**: the latest alert, plus `first_alerted_at` and `alert_count` for that home. Pagination is by home. Viewing marks read every alert for the homes shown. The unread count counts homes with unread alerts, so it matches what the buyer sees.
-- **Images:** move the 5 photos to `public/images/listings/`, convert them to WebP at card size, add `CREDITS.md` (source: Unsplash, Unsplash License; per-photo links to be filled in by Adam), and add `image_url` to `ListingResource` (picked deterministically by `id % count`).
+- **Images:** move the 5 photos to `public/images/listings/`, convert them to WebP at native size, and add `image_url` to `ListingResource` (picked deterministically by `id % count`).
 - **P5 (no change):** save and delete keep one shared 10-a-minute limit.
 
 ## Brand and shell
@@ -39,10 +39,11 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 ## Listing images (placeholders)
 
-- **Source:** free-licensed Unsplash photos, prepared in step 1b as WebP in `public/images/listings/` with `CREDITS.md` (replace or extend only with images under the Unsplash licence, never sponsored iStock results).
+- **Source:** free-licensed Unsplash photos, prepared in step 1b as WebP in `public/images/listings/` (replace or extend only with images under the Unsplash licence, never sponsored iStock results).
 - **Assignment is data-driven:** `ListingResource` adds `image_url`, picked deterministically from the listing ID (`id % count`), so a listing always shows the same photo. No schema change, nothing decided in Vue.
 - **Accessibility:** decorative (`alt=""`). They aren't photos of the actual home, and the card's address and details already describe it.
-- **Performance:** `width`/`height` set (no layout shift, CLS), `loading="lazy"` below the fold, `decoding="async"`.
+- **Aspect ratio is a UI concern:** the backend sends only `image_url`. The card's image box has a fixed aspect ratio from a named Tailwind token in `@theme` (e.g. `--aspect-card: 3 / 2` → `aspect-card`) with `object-cover`, so the space is reserved before the image loads (no layout shift, CLS), and every card crops the same whatever the photo's shape. No arbitrary `aspect-[…]` values.
+- **Performance:** `loading="lazy"` below the fold, `decoding="async"`.
 - Used on listing cards (listings, alerts) and the detail page.
 
 ## Listings page

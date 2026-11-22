@@ -13,6 +13,8 @@ use Inertia\Response;
 
 class SavedSearchController extends Controller
 {
+    private const PER_PAGE = 15;
+
     public function index(Request $request): Response
     {
         // `id` breaks ties between searches created in the same second, so
@@ -21,9 +23,10 @@ class SavedSearchController extends Controller
             ->with(['regions', 'propertyTypes'])
             ->latest()
             ->orderByDesc('id')
-            ->paginate(15);
+            ->paginate(self::PER_PAGE);
 
         return Inertia::render('SavedSearches/Index', [
+            'savedSearchCount' => $searches->total(),
             'savedSearches' => SavedSearchResource::collection($searches),
             'savedSearchLimit' => SavedSearch::MAX_PER_USER,
         ]);
@@ -57,8 +60,17 @@ class SavedSearchController extends Controller
      */
     public function destroy(Request $request, int $id): RedirectResponse
     {
-        $request->user()->savedSearches()->findOrFail($id)->delete();
+        $user = $request->user();
+        $user->savedSearches()->findOrFail($id)->delete();
 
-        return back()->with('status', 'Search deleted.');
+        // Deleting the last search on a page would otherwise bounce back to an
+        // empty page that still has searches before it, so clamp to the last real page.
+        parse_str((string) parse_url((string) $request->headers->get('referer'), PHP_URL_QUERY), $query);
+        $lastPage = max(1, (int) ceil($user->savedSearches()->count() / self::PER_PAGE));
+        $page = min(max(1, (int) ($query['page'] ?? 1)), $lastPage);
+
+        return redirect()
+            ->route('saved-searches.index', $page > 1 ? ['page' => $page] : [])
+            ->with('status', 'Search deleted.');
     }
 }

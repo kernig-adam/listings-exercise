@@ -197,6 +197,83 @@ class AlertPageTest extends TestCase
         $response->assertInertia(fn (AssertableInertia $page) => $page->where('alerts.unread', 2));
     }
 
+    public function test_several_alerts_for_one_home_collapse_into_one_card(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        $first = Alert::factory()->for($this->user)->create(['listing_id' => $listing->id, 'created_at' => now()->subDays(3), 'updated_at' => now()->subDays(3)]);
+        $latest = Alert::factory()->for($this->user)->backOnMarket()->create(['listing_id' => $listing->id, 'created_at' => now()->subDay(), 'updated_at' => now()->subDay()]);
+
+        // Act
+        $response = $this->get(route('alerts.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('alertList.data', 1)
+            ->where('alertList.data.0.id', $latest->id)
+            ->where('alertList.data.0.alert_count', 2)
+            ->where('alertList.data.0.first_alerted_at', $first->created_at->toIso8601String()));
+    }
+
+    public function test_another_users_alerts_for_the_same_home_are_not_counted(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        Alert::factory()->for($this->user)->create(['listing_id' => $listing->id]);
+        Alert::factory()->create(['listing_id' => $listing->id]);
+
+        // Act
+        $response = $this->get(route('alerts.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('alertList.data', 1)
+            ->where('alertList.data.0.alert_count', 1));
+    }
+
+    public function test_pagination_counts_homes_not_alerts(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        Alert::factory()->for($this->user)->count(3)->create(['listing_id' => $listing->id]);
+        Alert::factory()->for($this->user)->count(2)->create();
+
+        // Act
+        $response = $this->get(route('alerts.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.meta.total', 3));
+    }
+
+    public function test_viewing_marks_every_alert_for_the_shown_homes_read_and_the_card_is_new(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        $older = Alert::factory()->for($this->user)->create(['listing_id' => $listing->id, 'updated_at' => now()->subDays(2)]);
+        Alert::factory()->for($this->user)->read()->create(['listing_id' => $listing->id, 'updated_at' => now()->subDay()]);
+
+        // Act
+        $response = $this->get(route('alerts.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.data.0.is_new', true));
+        $this->assertNotNull($older->fresh()->read_at);
+    }
+
+    public function test_the_unread_count_counts_homes_not_alerts(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        Alert::factory()->for($this->user)->count(3)->create(['listing_id' => $listing->id]);
+        Alert::factory()->for($this->user)->create();
+
+        // Act
+        $response = $this->get(route('listings.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alerts.unread', 2));
+    }
+
     public function test_the_unread_count_is_zero_without_a_user(): void
     {
         // Arrange

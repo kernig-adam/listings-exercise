@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property-read Listing $listing
  * @property-read OutboxMessage $outboxMessage
  * @property-read Collection<int, SavedSearch> $savedSearches
+ * @property-read object{first_alerted_at: string, alert_count: int|string, unread_count: int|string} $history Set by AlertController, not a column.
  */
 class Alert extends Model
 {
@@ -92,5 +93,25 @@ class Alert extends Model
     public function scopeUnread(Builder $query): void
     {
         $query->whereNull('read_at');
+    }
+
+    /**
+     * Only the newest alert of each user + listing, so the page shows one card per
+     * home. A correlated NOT EXISTS (no window functions) works unchanged on
+     * SQLite, MySQL and Postgres; `id` breaks updated_at ties so exactly one
+     * row per home survives.
+     *
+     * @param  Builder<Alert>  $query
+     */
+    public function scopeLatestPerListing(Builder $query): void
+    {
+        $query->whereNotExists(fn ($newer) => $newer->from('alerts as newer')
+            ->whereColumn('newer.user_id', 'alerts.user_id')
+            ->whereColumn('newer.listing_id', 'alerts.listing_id')
+            ->where(fn ($later) => $later
+                ->whereColumn('newer.updated_at', '>', 'alerts.updated_at')
+                ->orWhere(fn ($tied) => $tied
+                    ->whereColumn('newer.updated_at', 'alerts.updated_at')
+                    ->whereColumn('newer.id', '>', 'alerts.id'))));
     }
 }

@@ -30,6 +30,39 @@ class ListingSearchTest extends TestCase
         return $this->get($url)->viewData('page')['props']['currentSearchSaved'];
     }
 
+    public function test_the_search_description_is_sent_for_applied_filters(): void
+    {
+        // Act
+        $response = $this->get('/?max_price=200000&min_bedrooms=2');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('searchDescription', 'Up to £200,000 · 2+ beds'));
+    }
+
+    public function test_the_search_description_is_null_without_filters(): void
+    {
+        // Act
+        $response = $this->get('/');
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('searchDescription', null));
+    }
+
+    public function test_a_listing_image_is_chosen_deterministically_from_the_id(): void
+    {
+        // Arrange
+        $listing = Listing::factory()->live()->create();
+        $n = $listing->id % 5 + 1;
+
+        // Act
+        $response = $this->get(route('listings.show', $listing));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('listing.image_url', asset("images/listings/house-{$n}.webp")));
+        $this->assertFileExists(public_path("images/listings/house-{$n}.webp"));
+    }
+
     public function test_price_range_is_inclusive_at_both_ends(): void
     {
         // Arrange
