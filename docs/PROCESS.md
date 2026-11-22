@@ -6,7 +6,7 @@ This file shows how I worked through the exercise: what I looked at, what I deci
 
 ## How I work with AI on this
 
-- **Rules first.** [CLAUDE.md](CLAUDE.md) sets the expectations for Claude Code before any code is written: follow the existing patterns, pass the CI checks, write tests first, no gold-plating.
+- **Rules first.** [CLAUDE.md](../CLAUDE.md) sets the expectations for Claude Code before any code is written: follow the existing patterns, pass the CI checks, write tests first, no gold-plating.
 - **Small tasks, each isolated.** Each task runs in its own git worktree on its own branch, then merges into the feature branch. This keeps each change small enough to review properly.
 - **The model fits the task.** Opus for design and review, Sonnet for implementation, Haiku for mechanical work. Each task in the plan names its model.
 - **AI work is labelled.** Branches created and pushed by Claude through automation are prefixed `claude/`, so the history shows which work was automated. Branches without the prefix are mine.
@@ -31,9 +31,9 @@ Kept up to date as tools are added, so the setup can be reproduced and revisited
 | PCOV | Local + CI | Coverage driver. The same driver on both sides, so coverage numbers mean the same thing. |
 | PHPUnit 12, Pint, Larastan (level 5) | Local + CI | Already in the repo. Unchanged. |
 | Node + npm | Local + CI | Front-end build. CI uses Node 20; locally I have Node 24 (see the parity gap in entry 4). |
-| Claude Code | Local | AI pair. Rules in [CLAUDE.md](CLAUDE.md). |
-| Claude Code output style "KLANG" | Local | [.claude/output-styles/klang.md](.claude/output-styles/klang.md): how the AI talks to me (action first, plain English to ASD-STE100, always flag guesses and unrequested changes). Affects replies only, not the code. |
-| Claude Code hooks (Node script) | Local | [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) blocks pushes and PRs until the CI checks pass locally. |
+| Claude Code | Local | AI pair. Rules in [CLAUDE.md](../CLAUDE.md). |
+| Claude Code output style "KLANG" | Local | [.claude/output-styles/klang.md](../.claude/output-styles/klang.md): how the AI talks to me (action first, plain English to ASD-STE100, always flag guesses and unrequested changes). Affects replies only, not the code. |
+| Claude Code hooks (Node script) | Local | [.claude/hooks/quality-gate.mjs](../.claude/hooks/quality-gate.mjs) blocks pushes and PRs until the CI checks pass locally. |
 | git worktrees | Local | One isolated checkout per task. |
 | GitHub CLI (`gh`) | Local | PRs against my own fork. |
 | GitHub Actions | CI | Existing pipeline; I added a coverage threshold. |
@@ -51,7 +51,7 @@ Kept up to date as tools are added, so the setup can be reproduced and revisited
 
 Before planning anything, I read the brief and the codebase so the feature fits what's already there.
 
-**Read:** [TASK.md](TASK.md), [README.md](README.md), every file under `app/`, `routes/`, `database/`, `tests/`, the CI workflow and the PHPStan config.
+**Read:** [TASK.md](../TASK.md), [README.md](../README.md), every file under `app/`, `routes/`, `database/`, `tests/`, the CI workflow and the PHPStan config.
 
 **What's used, and where:**
 
@@ -80,7 +80,7 @@ Before planning anything, I read the brief and the codebase so the feature fits 
 
 **Branch:** `initial`
 
-I wrote [CLAUDE.md](CLAUDE.md) so every session and every worktree starts from the same rules:
+I wrote [CLAUDE.md](../CLAUDE.md) so every session and every worktree starts from the same rules:
 
 - A table of the existing patterns to copy (Form Requests, Resources, enums, scopes, factory states, test style).
 - The quality gate: the same four checks CI runs. A task isn't done until they pass and the output has been shown.
@@ -280,7 +280,7 @@ I defined four project agents in `.claude/agents/`, each with a named model and 
 
 **Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session) · **Skill:** Matt Pocock's `grilling`
 
-Before any feature code, I had the AI grill me on the brief and its optional items, in rounds of numbered questions, each with a recommended answer. Every decision went into NOTES.md as I made it. The result is a backend task ([docs/tasks/01-backend-saved-search-alerts.md](docs/tasks/01-backend-saved-search-alerts.md)) with agents, order, data model, behaviour and acceptance tests.
+Before any feature code, I had the AI grill me on the brief and its optional items, in rounds of numbered questions, each with a recommended answer. Every decision went into NOTES.md as I made it. The result is a backend task ([docs/tasks/01-backend-saved-search-alerts.md](tasks/01-backend-saved-search-alerts.md)) with agents, order, data model, behaviour and acceptance tests.
 
 **Where I overruled the AI's recommendations:**
 - **Price and bedrooms as ranges** (it proposed max price and min bedrooms only). Other property sites show a range is key.
@@ -302,7 +302,7 @@ Before any feature code, I had the AI grill me on the brief and its optional ite
 
 **Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session) · **Skill:** `grilling`
 
-A second grilling session on the UI only, because the first one leaned towards the backend. The result is the UI task, [docs/tasks/02-ui-saved-search-alerts.md](docs/tasks/02-ui-saved-search-alerts.md).
+A second grilling session on the UI only, because the first one leaned towards the backend. The result is the UI task, [docs/tasks/02-ui-saved-search-alerts.md](tasks/02-ui-saved-search-alerts.md).
 
 **Decisions:** Street's header on every page with a "Welcome back, {name}" greeting; brand tokens on the shell and new pages, with a light swap only on existing pages; pill chips for regions and types; preset range dropdowns from the backend; the existing Search button; "Save this search" with every state designed; inline delete confirmation; alerts on the listing card; a mobile Menu and a Filters panel; "View homes" on saved searches; Vitest, Playwright and axe AA blocking in CI.
 
@@ -566,6 +566,19 @@ I split the UI into 2a (foundations) and 2b (pages), so each is reviewable on it
 - I asked for a **"from a fresh install to an alert" walkthrough at the top of NOTES.md**. Every step was rehearsed on a separate empty SQLite database (seed, then go-live, then relay, giving 1 unread; then read, re-list and relay, giving `back_on_market`), so the instructions are tested, not just written. The rehearsal also caught a wrong command (`Listing::alerts()` doesn't exist) before it reached the notes.
 
 **Checks (re-run by me):** Vitest **74 passed** (9 files), PHP **185 passed** at **98.6%** (two fewer after removing the summary prop's tests), Pint, PHPStan 0 errors, build OK, no inline styles or arbitrary values.
+
+**Reviewed:** *pending*
+
+### 23. Checked against TASK.md; NOTES.md cut to the brief's length
+
+**Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session)
+
+I asked the AI to check everything against TASK.md, with evidence for each line rather than a blanket "done". Every core requirement and all three optional items were met. **Four deliverable gaps** came out of it:
+- **NOTES.md had grown to about 6,900 words.** The brief says "half a page is plenty… we read this closely". Recording every decision there as it was made (my own rule in CLAUDE.md) made it the full decision log instead of a summary.
+- **Fix:** the full record moved **verbatim** to [docs/DECISIONS.md](DECISIONS.md), so nothing was lost. NOTES.md was rewritten to about 540 words: a short fresh-install walkthrough, then the brief's own headings. CLAUDE.md now says decisions go to DECISIONS.md and NOTES.md stays short.
+- Two placeholder sections ("Deliberately left out", and a stray "More to add…" line) were filled in, in both files.
+- The hand-back PR (feature branch to `main` on my fork) isn't open yet. That's the next step.
+- **All the write-ups now live in `docs/`:** `NOTES.md`, `PROCESS.md`, `DECISIONS.md` and the task docs, moved with `git mv` so their history follows them. Every relative link was rewritten and checked to resolve, and CLAUDE.md, the agents and the hook point at the new paths. Decision-type references (flag a wrong pattern, describe the queue design) now point at DECISIONS.md rather than the half-page NOTES.md.
 
 **Reviewed:** *pending*
 

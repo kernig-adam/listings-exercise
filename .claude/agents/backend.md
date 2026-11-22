@@ -55,7 +55,7 @@ Work to the **OWASP Top 10** and the **OWASP ASVS** basics. The ones that apply 
 - **Enums, not strings,** for any fixed set (status, property type, alert state). Cast them on the model and compare enum cases (`=== ListingStatus::Live`), never string literals.
 - **Typed request access:** `$request->integer()`, `string()`, `enum('property_type', PropertyType::class)`, or `validated()`. Never raw `$request->input()` in logic.
 - **PHPStan level 5 with an empty baseline** is the floor. Generics on relations and collections (`HasMany<SavedSearch, $this>`).
-- **`declare(strict_types=1)`:** the existing files don't use it. Adding it to new files only would be inconsistent, so **flag it in NOTES.md as a recommendation** rather than adding it piecemeal.
+- **`declare(strict_types=1)`:** the existing files don't use it. Adding it to new files only would be inconsistent, so **flag it in docs/DECISIONS.md as a recommendation** rather than adding it piecemeal.
 
 ## Tests (write the failing test first)
 

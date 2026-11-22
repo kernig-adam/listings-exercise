@@ -1,52 +1,79 @@
-# Notes
+# Decisions
 
-The short version. The full, time-ordered working is in [PROCESS.md](PROCESS.md).
+The full record of the decisions behind this work, written as they were made: how I worked with Claude, how I'd re-architect this, what a native Windows install took, then setup, front end and accessibility, the database engine, UI and UX, and the backend. [NOTES.md](NOTES.md) is the half-page summary; [PROCESS.md](PROCESS.md) is the time-ordered log of how the work was done.
 
-## See an alert in about five minutes, from a fresh install
+## How I worked with Claude: directing, questioning, evaluating
 
-Each step was rehearsed on an empty database. Run from the project folder.
+The brief asked me to work AI-natively and to review what the tools produce. I treated Claude as a team I direct, not an autocomplete. I set the rules, had it question me before anything was built, split the work across specialist agents, and checked every result myself before accepting it.
 
-**1. Install and run** (the README's "Getting started", unchanged):
+**1. Rules first, then enforcement.** Before any feature code, [CLAUDE.md](../CLAUDE.md) set the expectations: follow the existing patterns, write the failing tests first, keep the quality gate green, keep the AI's work visible. Where a rule matters, I made it mechanical rather than trusting memory:
+- a hook that blocks commits without the `CLAUDE - ` prefix,
+- PRs that must follow the template, with an **attestation box only a human can tick**, enforced by a required check and a branch ruleset,
+- `claude/` branch names and a `claude` PR label, so the history shows what was automated.
 
-```bash
-composer install
-npm install
-php artisan migrate --seed      # also creates a demo saved search: "Up to £400,000 · 2+ beds"
-php artisan serve               # terminal 1 → http://127.0.0.1:8000
-npm run dev                     # terminal 2
-```
+**2. Specialist agents I defined and reshaped.** I created four project agents in `.claude/agents/`, each with a named model and only the tools it needs, and reviewed them before they wrote anything:
 
-Open the site. The bell (top right) has no badge, and **Saved searches** (the bookmark icon) shows the demo search.
+| Agent | Model | Role |
+| --- | --- | --- |
+| `product-owner` | Opus | Buyer value, outcomes and trust. Uses the **running site in Chrome**, measured like real user monitoring (LCP, CLS, INP, errors, friction). |
+| `ui` | Sonnet | Vue and Tailwind, Street's brand, UX for every state, WCAG 2.2 AA, semantic HTML, strict token-only styling. |
+| `backend` | Sonnet | The existing Laravel request flow, OWASP (access control first), fail fast, validation at every boundary, strong typing, AAA tests. |
+| `data` | Sonnet | Constraints and indexes, enums as the one source of truth into Vue, SQLite quirks and portability. |
 
-**2. A new home goes live** (there's no listing-management screen, so use `tinker`). This takes an unlisted (draft) home that matches the demo search and publishes it:
+I rewrote the product owner when its first draft read like a checklist of the brief rather than a product owner. I also gave it the browser, so its feedback comes from using the product.
 
-```bash
-php artisan tinker --execute="App\Models\Listing::where('status','draft')->where('price','<=',400000)->where('bedrooms','>=',2)->firstOrFail()->update(['status'=>'live','listed_at'=>now()]);"
-```
+**3. Grilling before building.** I used Matt Pocock's `grilling` skill to have Claude question *me*, in rounds of numbered questions, each with a recommended answer, until the design tree was complete:
+- a **backend and product session** (match rules, criteria, duplicates, backfill, storage, the outbox),
+- a separate **UI and UX session**,
+- the **product owner's own review questions** (P1–P8), after it had measured a baseline of the live site.
 
-The listing and its `listing.went_live` outbox message are written in one transaction. **No alert exists yet**: alerts are generated outside the request.
+Each answer went into the docs as it was made. The sessions mattered because I **overruled the AI's recommendations wherever it was optimising for system simplicity over buyers**: ranges instead of a single max, several regions and types, not rejecting areas with no homes yet, re-listed homes alerting again, honest "added to your Alerts" wording, and PATCH (not POST or DELETE) for marking alerts read.
 
-**3. Run the relay** (the scheduler does this every minute; run it by hand to skip the wait):
+**4. A repeatable loop per task:** the product owner reviews the plan, then the data or backend agent builds it **tests first** (I made it show the failing run), then the UI agent builds on that, then **I review**: read the diff, re-run every check, use it in Chrome at mobile, iPad and desktop sizes, and only then approve a commit I've seen.
 
-```bash
-php artisan outbox:relay
-```
+**5. Evaluating as I went.** Treating the agents' reports as claims to verify, not facts, caught real problems:
+- a missing index that only MySQL would have created automatically (the agent said "indexed by the FK"),
+- **guests getting a 500** on user-scoped routes, which I spotted reading `AlertController`,
+- a report claiming a 3-column layout and right-aligned buttons that weren't in the code,
+- focus dropping to the page body after saving,
+- `GET /alerts` with a side effect, blocking a safe prefetch,
+- stock images that weren't free to use (iStock results inside Unsplash search),
+- an accidentally upscaled image set,
+- documentation commands that didn't work, caught by rehearsing every step on an empty database.
 
-**4. See it:** refresh any page and the bell shows **1**. Open **Alerts**: the home appears with **"New"**, **"New listing"** and **"Matched: Up to £400,000 · 2+ beds"**. Viewing marks it read, so the badge clears, but the card keeps "New" for this visit.
+I also checked claims that turned out *not* to be bugs (a "scroll jump" that was my test tool, a "logo not inverted" that was my Dark Reader extension) before changing anything. I logged mistakes, including the AI's and mine, in PROCESS.md rather than hiding them: code written before tests, a commit made without telling me, an unlogged commit.
 
-**5. Optional: a sale falls through.** Once you've viewed that alert, put the same home under offer and back to live, then relay again:
+**6. A live process log I review.** [PROCESS.md](PROCESS.md) is written by Claude in my voice as each task happens, never rebuilt afterwards from transcripts. Every entry ends with a sign-off line that only I change.
 
-```bash
-php artisan tinker --execute="App\Models\Alert::firstOrFail()->listing->update(['status'=>'under_offer']);"
-php artisan tinker --execute="App\Models\Alert::firstOrFail()->listing->update(['status'=>'live']);"
-php artisan outbox:relay
-```
+## How I'd re-architect this for a real product
 
-The bell shows **1** again, and Alerts shows that home once, with **"Back on the market"** and **"First alerted {date}"**. If you skip viewing the first alert, it's refreshed instead of duplicated (the anti-spam guard).
+This exercise works with the codebase as given. Building it for production, I'd change the foundations:
 
-**Also try:** save your own search from the listings page (pick filters, press Search, then **Save this search**), then put a home live that matches it. Homes that don't match any saved search create no alert.
+- **Containers for development and deployment.** Laravel Sail (or a project Dockerfile) so every machine runs the same PHP, extensions, Node and database. The same image goes to **AWS ECR and runs on ECS or Lambda**, so dev and prod match. That removes the whole Windows installation problem below.
+- **The production database engine everywhere.** Run MySQL or PostgreSQL (whichever Street uses; I'd confirm first) locally in a container and in CI, instead of SQLite, so loose typing and text dates can't hide bugs.
+- **Alerting as its own service on real messaging.** The transactional outbox stays, but the relay publishes to a broker (**SNS → SQS** for simple fan-out, or **Kinesis / Kafka** if we need ordering, replay or high throughput; the choice depends on volume). Separate consumers match and write alerts, with dead-letter queues, alarms (e.g. CloudWatch) and re-runs designed in.
+- **Matching built for scale.** Pre-computed subscription indexes or partitioning by region, so a go-live doesn't scan every saved search.
+- **A notification service** for delivery channels (email, push, in-app), per-user preferences (instant or digest), and frequency caps, driven by the same alert records.
+- **Server-side saved filters.** Store a search's criteria under a short key, so URLs stay small as criteria grow.
+- **Stronger typing end to end.** `declare(strict_types=1)`, PHPStan near `max`, typed DTOs for event payloads, and generated TypeScript types for Inertia props, so the front end is checked against the back end at build time.
+- **Real observability.** Production RUM (e.g. CloudWatch RUM or Sentry) collecting the signals the product owner measured locally, plus alert-engagement analytics (read rates, click-through, searches deleted after alerts).
+- **Supply-chain hygiene.** Dependabot or Renovate, `composer audit` and `npm audit` in CI, image scanning, pinned patched runtimes.
+- **One CI pipeline** (remove the leftover skeleton workflows), with patch coverage reported on each PR, and mechanical gates that stop an AI agent acting outside its task.
 
-*Notes:* seeding is random, so if step 2 reports "No query results", run `php artisan migrate:fresh --seed` and try again. On Windows, `composer dev` doesn't work (see below); the two-terminal steps do. If port 8000 is taken, `php artisan serve` picks the next free port.
+## A native Windows install: what it actually took
+
+The README's "Getting started" assumes a Unix-like machine. On Windows, natively, it took all of this before the first test ran. Each item is a per-machine maintenance point that Docker removes:
+
+1. **PHP itself.** Chocolatey installed **8.6** by default; CI runs **8.4**, and there's no PCOV build for 8.6 on Windows, so I downgraded to 8.4.
+2. **Composer** from its separate Windows installer.
+3. **Extensions enabled by hand in `php.ini`:** `pdo_sqlite`, `sqlite3`, `fileinfo`, `mbstring`, `openssl`, `curl`, `zip`. The README calls SQLite "bundled", but on Windows it's shipped switched **off**.
+4. **PCOV** downloaded as a separate DLL, to measure coverage the same way CI does.
+5. **PATH fixes** (with admin rights) when two PHP versions were installed and the wrong one won, plus restarting the editor so tools saw the change.
+6. **`composer dev` doesn't run at all.** It starts Pail, which needs PHP's `pcntl` extension (Unix only), and `--kill-others` then stops everything. The README only hints at this script; its real instructions are two terminals.
+7. **WSL as a workaround** got `composer dev` running, but serving from the Windows filesystem took **about 6 seconds a page**, and fixing that needed a second copy of the repo. I abandoned it.
+8. **Smaller Windows-only snags:** Vitest fails under Git Bash's lowercase `/c/...` path (run it from PowerShell); port 8000 was taken by another app (Laravel moved to 8001); a browser extension (Dark Reader) changed how the site rendered, and would skew contrast checks.
+
+None of this is a fault in the feature. It's why I'd containerise the development environment first on a real project, and why I kept the reviewer path simple (`composer install`, `npm install`, no browser downloads).
 
 ## Key decisions and trade-offs
 
@@ -210,7 +237,19 @@ Decided in a grilling session (the AI questions me, I decide).
 
 ## Deliberately left out
 
-*To be filled in.*
+- **Sending anything.** No email, SMS or push. Alerts are persisted and shown in the app, which is what the brief asks for. Delivery would hang off the same alert record later.
+- **Real messaging infrastructure.** No SNS, SQS, Kinesis or Kafka. A polling `outbox:relay` command stands in for the publisher, and the consumer runs in-process. Dead-lettering, alarming and re-runs are described, not built.
+- **Digests and batching.** One alert per home per go-live, refreshed rather than repeated. No daily or weekly digest, and no instant-or-digest preference.
+- **Backfill.** Saving a search doesn't alert on homes that are already live (on purpose: no day-one flood, and a bounded cost per save).
+- **Other alert triggers.** No price-drop alert, and no alert when a live listing is edited.
+- **Listing management.** No screen to publish a listing; `tinker` does it for the demo.
+- **Undo for deleting a saved search.** There's an inline confirmation instead.
+- **Playwright end-to-end tests.** Left out so reviewers can run everything with `npm install`; Vitest with axe covers components and accessibility.
+- **Docker / Sail and Laravel Boost.** Both would add dependencies or infrastructure the codebase doesn't have. I'd use both on a real project.
+- **A local push gate.** Removed after it clashed with the dev server; CI runs every check.
+- **Dependency upgrades mid-feature** (Vue's flagged advisory doesn't affect this app).
+- **A collapsible filter panel on mobile.** The filter card is tall on a phone; noted as a next step.
+- **`declare(strict_types=1)`.** The existing files don't use it, and adding it to new files only would be inconsistent.
 
 ## With more time
 
@@ -226,8 +265,10 @@ Decided in a grilling session (the AI questions me, I decide).
 
 ## Where it won't hold up yet
 
-*More to add once the feature exists.*
-
+- **Matching cost grows with saved searches.** Each go-live runs one query over every saved search (indexed bounds and join tables, so it's set-based, not a PHP loop). With millions of searches or very popular homes, fan-out would need partitioning by region, pre-computed subscription indexes, or a dedicated matching service.
+- **The relay is a single polling process.** It's fine at one message a minute in one app. At volume it needs a real broker, parallel consumers, dead-lettering and alarming (all described above). Published outbox rows are never pruned yet.
+- **SQLite isn't production.** Tests pass on SQLite's loose typing and text dates; a second CI job on the production engine would catch differences. (I don't know which engine Street runs.)
+- **Limits are artificial.** 20 saved searches and 10 saves a minute per account were picked to bound abuse, not from data.
 - **Broad searches can still be noisy.** A search for just "Liverpool" alerts on every Liverpool home. Alerts are in-app only and deduplicated, but at volume this needs digests or relevance limits.
 - **The alert card relies on the controller to attach its history** (first alerted, alert count, unread state). It fails loudly if that's missing, rather than showing wrong data, but it's a coupling: any new place that renders alerts must remember to do it. With more time I'd load those counts through an Eloquent relationship.
 - **Engagement signals are thin.** Deleting a saved search is a hard delete, and alert click-throughs aren't recorded, so "searches deleted soon after an alert" (a trust-loss signal) and "alert → listing" conversion can't be measured yet.

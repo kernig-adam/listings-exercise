@@ -80,5 +80,5 @@ Use the element that means what the content is. `<div>` and `<span>` are for sty
 - **Vitest + Vue Test Utils** for components: what renders, what the user can do, emitted events. Find elements by role or label, not CSS classes.
 - **axe-core inside Vitest** asserting no WCAG 2.2 AA violations on each page component, empty states included. jsdom can't compute colour contrast, so check every new colour pair against the tokens (≥ 4.5:1 for text).
 - **Keyboard checks in Vitest:** dispatch key events (Tab order, Enter/Space, Escape closing disclosures) and assert focus and `aria-expanded`.
-- **No Playwright.** It needs a browser download, and reviewers must be able to run everything with `npm install` and `npm test`. It's noted in NOTES.md as what I'd add on a real project.
+- **No Playwright.** It needs a browser download, and reviewers must be able to run everything with `npm install` and `npm test`. It's noted in docs/NOTES.md as what I'd add on a real project.
 - Don't claim UI work is done until `npm run build` and `npm test` have run, with their output shown.

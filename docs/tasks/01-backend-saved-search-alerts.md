@@ -1,6 +1,6 @@
 # Task 1 — Backend: saved searches, outbox and alerts
 
-**Status:** designed (grilling session, decisions in [NOTES.md](../../NOTES.md)); product owner reviewed and changes accepted by Adam; ready for step 2 (data).
+**Status:** designed (grilling session, decisions in [NOTES.md](../NOTES.md)); product owner reviewed and changes accepted by Adam; ready for step 2 (data).
 **Branch:** `feature/saved-search-alerts`. **UI:** separate task, after a UI/UX grilling session.
 
 ## Goal

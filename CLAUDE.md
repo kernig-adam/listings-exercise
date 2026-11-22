@@ -14,7 +14,7 @@ Interview exercise. Read [TASK.md](TASK.md) (the brief) and [README.md](README.m
 
 ## Follow existing patterns
 
-Match what is already in the code. If a pattern looks wrong, say so in `NOTES.md` — do not work around it silently.
+Match what is already in the code. If a pattern looks wrong, say so in `docs/DECISIONS.md` — do not work around it silently.
 
 | Concern | Pattern to copy |
 | --- | --- |
@@ -43,7 +43,7 @@ vendor/bin/phpstan analyse    # keep the ignoreErrors baseline empty
 npm run build
 ```
 
-**Run them yourself before every push.** The local push gate is removed for now (see NOTES.md). The hook in [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) still enforces the commit prefix and PR rules, and CI enforces the checks on PRs. Show the output of all four before asking to push. Never lower the coverage threshold without Adam's say-so.
+**Run them yourself before every push.** The local push gate is removed for now (see docs/NOTES.md). The hook in [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) still enforces the commit prefix and PR rules, and CI enforces the checks on PRs. Show the output of all four before asking to push. Never lower the coverage threshold without Adam's say-so.
 
 **Never commit or push without Adam knowing.** Show the diff summary and the proposed message, then wait for his go-ahead.
 
@@ -51,7 +51,7 @@ Write the failing test first for any behaviour change (matching, scoping to the 
 
 ## Docs and real state
 
-Laravel Boost is **not** used in this exercise, because it would add a dependency the codebase doesn't have (see `NOTES.md`). Instead:
+Laravel Boost is **not** used in this exercise, because it would add a dependency the codebase doesn't have (see `docs/NOTES.md`). Instead:
 
 - Check Laravel, Inertia and Vue APIs against current docs (Context7) before using them. Don't guess.
 - Check real state rather than assuming it: `php artisan migrate:status`, `php artisan route:list`, `php artisan tinker`, and `storage/logs/laravel.log`.
@@ -88,22 +88,23 @@ Every task in a plan names its model. Default to the cheapest one that can do it
 
 | Model | Use for |
 | --- | --- |
-| `opus` (Opus 5.5) | Planning, design decisions (match rules, dedup, backfill), code review, NOTES.md |
+| `opus` (Opus 5.5) | Planning, design decisions (match rules, dedup, backfill), code review, docs/NOTES.md |
 | `sonnet` (Sonnet 5.5) | Implementing a planned task: migrations, models, controllers, Vue pages, tests |
 | `haiku` (Haiku 5.5) | Mechanical work: searches, renames, running checks, Pint fixes |
 
 ## Deliverables
 
 1. Working feature on the feature branch, all checks green.
-2. `NOTES.md` (about half a page): key decisions and trade-offs, what was left out, what to do next, where it won't hold up (e.g. scale). Record decisions in it **as they are made**, not at the end.
-   - When Adam says "note", "notes" or "add to the notes", write it to `NOTES.md` **straight away, in that same turn**, not only in `PROCESS.md`. Capture his reasoning, not only the decision.
-3. `PROCESS.md`: the time-ordered log of how the work was done, written for the reviewers. After each task, append a numbered entry: branch, what was done and why, which checks ran and their results, and what changed after review. Write it in the first person as the candidate. Keep facts accurate. Do not log a check as passing unless it actually ran.
+2. `docs/NOTES.md` stays **short (about half a page)**, as the brief asks: a fresh-install walkthrough, then key decisions and trade-offs, what was left out, what's next, and where it won't hold up. It links to the detail.
+   - **`docs/DECISIONS.md`** is the full decision record. Record decisions there **as they are made**, not at the end.
+   - When Adam says "note", "notes" or "add to the notes", write it to `docs/DECISIONS.md` **straight away, in that same turn**, with his reasoning. Only touch `docs/NOTES.md` if it changes the half-page summary, and keep docs/NOTES.md short.
+3. `docs/PROCESS.md`: the time-ordered log of how the work was done, written for the reviewers. After each task, append a numbered entry: branch, what was done and why, which checks ran and their results, and what changed after review. Write it in the first person as the candidate. Keep facts accurate. Do not log a check as passing unless it actually ran.
    - Write the entry **during the task**, as part of finishing it. Never rebuild entries afterwards from transcripts or session exports.
    - End every new entry with `**Reviewed:** *pending*`. Only Adam changes it to a sign-off. Never mark an entry reviewed yourself.
 
 ## Don't
 
-- Send real email or need a running queue worker. A persisted alert / database notification is enough. Describe any queue or scheduler design in `NOTES.md`.
+- Send real email or need a running queue worker. A persisted alert / database notification is enough. Describe any queue or scheduler design in `docs/DECISIONS.md`.
 - Add dependencies for what a few lines can do.
 - Add abstractions with one implementation (repositories, interfaces, service layers) unless the code already uses them.
 - Touch the auth stub.

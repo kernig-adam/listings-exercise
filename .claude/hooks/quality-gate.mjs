@@ -6,7 +6,7 @@
 // is removed for now. It ran in the working checkout, so `npm ci` collided with
 // the running Vite dev server, and it checked the working tree rather than
 // the commit being pushed. CI still runs every check on PRs. To bring it back,
-// run it in an isolated checkout of the pushed commit (see PROCESS.md entry 11).
+// run it in an isolated checkout of the pushed commit (see docs/PROCESS.md entry 11).
 //
 // Exit 0 = allow, exit 2 = block (stderr is shown to Claude). Claude Code
 // treats any other exit code as "allow", so a crash must still exit 2.
