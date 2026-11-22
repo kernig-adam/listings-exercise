@@ -43,7 +43,9 @@ vendor/bin/phpstan analyse    # keep the ignoreErrors baseline empty
 npm run build
 ```
 
-**Enforced by a hook.** [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) runs all four before any `git push` or `gh pr create|merge|ready`, and blocks the command if anything fails, or if local PHP/PCOV doesn't match CI. Never bypass or weaken the hook, and never lower the coverage threshold, without Adam's say-so.
+**Run them yourself before every push.** The local push gate is removed for now (see NOTES.md). The hook in [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) still enforces the commit prefix and PR rules, and CI enforces the checks on PRs. Show the output of all four before asking to push. Never lower the coverage threshold without Adam's say-so.
+
+**Never commit or push without Adam knowing.** Show the diff summary and the proposed message, then wait for his go-ahead.
 
 Write the failing test first for any behaviour change (matching, scoping to the user, dedup). Do not claim a task is done without running the checks and showing the output.
 

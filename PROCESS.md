@@ -260,5 +260,21 @@ I defined four project agents in `.claude/agents/`, each with a named model and 
 
 **Reviewed:** *pending*
 
+### 11. Local quality gate removed; AI gates noted for later
+
+**Branch:** `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session)
+
+**What happened:** pushing entry 10 failed. The gate's `npm ci` hit `EPERM` because the running Vite dev server had a native file locked in `node_modules`. The AI first proposed swapping to `npm install`, and I said no: the gate should install exactly as CI does. It then proposed "stop Vite before pushing" and committed that without telling me. I pushed back on both:
+- **Not telling me.** I had the commit undone; it was local only. CLAUDE.md now says Claude never commits or pushes without me knowing.
+- **Treating the symptom.** Having to stop a dev server is a sign the gate is badly designed, not a runtime problem. The real flaw: the gate ran inside my working checkout, so it fought anything running there, and it checked uncommitted files rather than the commit being pushed.
+
+**Decision:** I removed the push-time quality checks from the hook for now, rather than patch a flawed design. The hook still enforces the `CLAUDE - ` commit prefix and the PR template and attestation rules. CI still runs every check on PRs. The right rebuild is a gate that runs in an isolated checkout of the exact commit being pushed.
+
+**Noted for later (NOTES.md):** Claude gates for when the AI hallucinates, drifts off task, or makes decisions that are mine: scope limits, protected decisions and config, checks for references to things that don't exist, and claims that don't match real results. This session gave a live example: the AI committed a decision I hadn't approved.
+
+**Checks:** none run. This change only removes checks from a hook; the commit-prefix and PR rules are unchanged.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

@@ -9,9 +9,9 @@ The short version. The full, time-ordered working is in [PROCESS.md](PROCESS.md)
 - **Native PHP, as the README defines, though I'd use Docker.** Locally that's PHP 8.4 through Chocolatey and Composer through its Windows `.exe` installer: exactly the per-machine upkeep Docker avoids. I tried Laravel Sail and reverted it. It added a dependency and silently rewrote `phpunit.xml`, which is working against the codebase. On a real project I'd propose Sail through Docker: the same platform on every machine, no Chocolatey or Composer upkeep on Windows, and the same image deployable to AWS (ECR to Lambda or ECS).
 - **Local and CI must agree.** Same PHP minor version (8.4) and the same coverage driver (PCOV). Coverage is 93.2% on both.
 - **Coverage floor of 90%** in CI, against a 93.2% baseline, so new work has to arrive with tests.
-- **Quality gate as a Claude Code hook.** Pushes and PRs are blocked until Pint, PHPStan, the tests with coverage, and the build pass locally. Checks don't depend on the AI remembering them, and CI minutes only go on work that passes.
+- **Local quality gate: removed for now.** A Claude Code hook used to block pushes until Pint, PHPStan, the tests with coverage, and the build passed locally. It ran inside the working checkout, so its `npm ci` collided with the running Vite dev server, and it checked uncommitted files rather than the commit being pushed. Rather than patch around a flawed design, I removed it. CI still runs every check on PRs, and the hook still enforces the commit prefix and PR attestation. To bring it back, run it in an isolated checkout of the exact commit being pushed.
 - **AI work is visible and attested.** `claude/` branches, `CLAUDE - ` commits, the `claude` PR label, and a PR template whose attestation box a human must tick. A required check and a branch ruleset enforce this, not just convention.
-- **One feature branch, attested once.** I dropped per-task worktrees and PRs for the feature: one person, one feature, so a PR per task was overhead. Every push is still gated locally, and the ruleset protects `main`, so the hand-back PR is the single attestation point.
+- **One feature branch, attested once.** I dropped per-task worktrees and PRs for the feature: one person, one feature, so a PR per task was overhead. The ruleset protects `main`, so the hand-back PR (with CI) is the single attestation point.
 - **Laravel Boost: dropped, but I'd use it.** Its doc search and schema/log tools keep an AI grounded in the real app. Here it would add a dependency the codebase doesn't have.
 - **Proportion:** this setup is heavier than a 4-hour exercise strictly needs. I did it because the brief cares how the AI is directed and reviewed, and these are the guard rails I'd want before letting an AI write production code.
 
@@ -65,6 +65,11 @@ SQLite causes formatting problems: dates stored as text, loose typing, different
 
 ## With more time
 
+- **Claude gates for when the AI hallucinates, drifts off task, or makes decisions it shouldn't.** Rules in CLAUDE.md are guidance; a model can still invent an API, wander outside the task, or quietly decide something that's mine to decide. I'd add hooks that enforce the boundaries mechanically:
+  - **Scope:** block edits outside the files and areas the current task names (e.g. no touching the auth stub, CI config or the coverage threshold).
+  - **Decisions:** block changes to `NOTES.md` decision lines, ruleset or CI config unless I've approved them, and block commits or pushes without my explicit go-ahead.
+  - **Hallucination checks:** fail when code references a class, route, method or config key that doesn't exist (PHPStan and the build catch some of this, so wire them into a gate), and when a commit or PR claims a test result the run didn't produce.
+  - **Rebuilt quality gate:** the push gate above, in an isolated checkout of the commit being pushed.
 - **Vulnerability checks.** A remote code execution flaw was recently reported in this PHP version line, and green tests say nothing about that. I'd add `composer audit` and `npm audit` to the gate and CI, fail on PHP patch versions with known advisories, pin CI to a patched PHP, and turn on Dependabot. With Docker, I'd also scan images (Trivy or ECR).
 - **Coverage on the PR:** a job summary and a PR comment showing patch coverage (the lines the PR changed), not only the total.
 - **One CI pipeline:** remove the four leftover Laravel skeleton workflows (`tests.yml` and others), which duplicate `ci.yml`.
