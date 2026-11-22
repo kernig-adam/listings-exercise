@@ -43,7 +43,7 @@ vendor/bin/phpstan analyse    # keep the ignoreErrors baseline empty
 npm run build
 ```
 
-**Enforced by a hook.** [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) runs all four before any `git push` or `gh pr create|merge|ready`, and blocks the command if anything fails, or if local PHP/PCOV doesn't match CI. Run the push from inside the worktree (or with `git -C <worktree>`) so the right checkout is checked. Never bypass or weaken the hook, and never lower the coverage threshold, without Adam's say-so.
+**Enforced by a hook.** [.claude/hooks/quality-gate.mjs](.claude/hooks/quality-gate.mjs) runs all four before any `git push` or `gh pr create|merge|ready`, and blocks the command if anything fails, or if local PHP/PCOV doesn't match CI. Never bypass or weaken the hook, and never lower the coverage threshold, without Adam's say-so.
 
 Write the failing test first for any behaviour change (matching, scoping to the user, dedup). Do not claim a task is done without running the checks and showing the output.
 
@@ -54,15 +54,11 @@ Laravel Boost is **not** used in this exercise, because it would add a dependenc
 - Check Laravel, Inertia and Vue APIs against current docs (Context7) before using them. Don't guess.
 - Check real state rather than assuming it: `php artisan migrate:status`, `php artisan route:list`, `php artisan tinker`, and `storage/logs/laravel.log`.
 
-## Workflow: worktrees and small tasks
+## Workflow: the feature branch and small tasks
 
-- Base branch for the feature: `feature/saved-search-alerts`, cut from `main`.
-- Each task gets its own worktree and branch, then merges back into the feature branch:
-  ```bash
-  git worktree add .worktrees/<task> -b claude/<task> feature/saved-search-alerts
-  ```
-- **Any branch Claude creates or pushes must be prefixed `claude/`**, so the history shows which work was automated. Never push to a branch without the prefix.
-  `.worktrees/` is gitignored. A new worktree needs `composer install` and `npm ci`; Composer's install script creates `.env` and `database/database.sqlite`.
+- All feature work happens on `feature/saved-search-alerts` (cut from `main`), in the main checkout. No worktrees.
+- Commit and push straight to the feature branch. The branch ruleset protects `main` only. Every push still goes through the quality-gate hook, and attestation happens once, on the hand-back PR to `main`.
+- Never push to `main` or any other branch. Any *new* branch Claude creates is prefixed `claude/`.
 - One task = one reviewable change (e.g. "migration + model + factory", "matching logic + tests"). If a task touches more than one layer it is probably two tasks.
 - Commit small. Commit messages say *why*. Only push or open PRs when asked.
 - **Every commit subject starts with `CLAUDE - `**, e.g. `CLAUDE - Add saved searches table`, so Adam's commits in between stand out. The hook blocks a `git commit` without it.

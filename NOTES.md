@@ -11,6 +11,7 @@ The short version. The full, time-ordered working is in [PROCESS.md](PROCESS.md)
 - **Coverage floor of 90%** in CI, against a 93.2% baseline, so new work has to arrive with tests.
 - **Quality gate as a Claude Code hook.** Pushes and PRs are blocked until Pint, PHPStan, the tests with coverage, and the build pass locally. Checks don't depend on the AI remembering them, and CI minutes only go on work that passes.
 - **AI work is visible and attested.** `claude/` branches, `CLAUDE - ` commits, the `claude` PR label, and a PR template whose attestation box a human must tick. A required check and a branch ruleset enforce this, not just convention.
+- **One feature branch, attested once.** I dropped per-task worktrees and PRs for the feature: one person, one feature, so a PR per task was overhead. Every push is still gated locally, and the ruleset protects `main`, so the hand-back PR is the single attestation point.
 - **Laravel Boost: dropped, but I'd use it.** Its doc search and schema/log tools keep an AI grounded in the real app. Here it would add a dependency the codebase doesn't have.
 - **Proportion:** this setup is heavier than a 4-hour exercise strictly needs. I did it because the brief cares how the AI is directed and reviewed, and these are the guard rails I'd want before letting an AI write production code.
 
