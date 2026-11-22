@@ -23,6 +23,7 @@ The bell shows **1**; **Alerts** shows the home as "New", with "Matched: Up to Â
 - **Security:** user-scoped routes need a user (401), and records load through the user (another user's record is a 404). Validation at the boundary, limits per account.
 - **Logging and monitoring:** system logs (what each go-live produced, relay runs, failures with stack traces), security warnings, and **user-activity events on their own channel** (searches, views, saves, alert click-through), so we can see how buyers use the product. IDs and counts only, never personal data; in production this would feed an analytics pipeline with consent and retention handled.
 - **Accessibility and brand:** WCAG 2.2 AA (axe in tests; Headers and WAVE checks by hand), semantic HTML, Street's brand as Tailwind tokens only.
+- **Code style:** Laravel's Pint preset, which builds on PSR-12, enforced in CI. Checked against strict PSR-12, the only differences are Laravel conventions the original code shares (e.g. `return new class extends Migration`), so I kept them; switching is a one-line `pint.json` plus a repo-wide reformat, if the team prefers it.
 - **Worked with the codebase:** native PHP as the README defines, though I'd use Docker. I flagged problems rather than working around them: `composer dev` fails on Windows, leftover skeleton CI workflows, SQLite vs production.
 
 ## Deliberately left out

@@ -73,6 +73,9 @@ final class SearchCriteria
         );
     }
 
+    /**
+     * Builds criteria from a stored search. Load its regions and property types first, or this runs extra queries.
+     */
     public static function fromSavedSearch(SavedSearch $search): self
     {
         return self::normalised(
@@ -88,6 +91,8 @@ final class SearchCriteria
     }
 
     /**
+     * Builds criteria with the region and type lists sorted and de-duplicated, so equal searches compare equal.
+     *
      * @param  list<string>  $regions
      * @param  list<PropertyType>  $propertyTypes
      */
@@ -102,11 +107,17 @@ final class SearchCriteria
         return new self($minPrice, $maxPrice, $minBedrooms, $maxBedrooms, $minBathrooms, $maxBathrooms, $regions, $propertyTypes);
     }
 
+    /**
+     * True when no criterion is set.
+     */
     public function isEmpty(): bool
     {
         return $this->toQuery() === [];
     }
 
+    /**
+     * Whether two searches ask for exactly the same thing, whatever order the values came in.
+     */
     public function equals(self $other): bool
     {
         return $this->toQuery() === $other->toQuery();
@@ -211,6 +222,8 @@ final class SearchCriteria
     }
 
     /**
+     * Price choices for the dropdowns. Any whole number in range is still accepted.
+     *
      * @return list<array{value: int, label: string}>
      */
     public static function priceOptions(): array
@@ -219,6 +232,8 @@ final class SearchCriteria
     }
 
     /**
+     * Bedroom choices for the dropdowns.
+     *
      * @return list<array{value: int, label: string}>
      */
     public static function bedroomOptions(): array
@@ -227,6 +242,8 @@ final class SearchCriteria
     }
 
     /**
+     * Bathroom choices for the dropdowns.
+     *
      * @return list<array{value: int, label: string}>
      */
     public static function bathroomOptions(): array
@@ -234,6 +251,9 @@ final class SearchCriteria
         return array_map(fn (int $baths) => ['value' => $baths, 'label' => (string) $baths], self::BATHROOM_PRESETS);
     }
 
+    /**
+     * The price part of the description. Never blank, so a description always says something.
+     */
     private function priceDescription(): string
     {
         return match (true) {
@@ -244,6 +264,9 @@ final class SearchCriteria
         };
     }
 
+    /**
+     * The bedroom part of the description, or null if no bedroom limit is set.
+     */
     private function bedroomDescription(): ?string
     {
         return match (true) {
@@ -255,6 +278,9 @@ final class SearchCriteria
         };
     }
 
+    /**
+     * The bathroom part of the description, or null if no bathroom limit is set.
+     */
     private function bathroomDescription(): ?string
     {
         return match (true) {
@@ -266,16 +292,25 @@ final class SearchCriteria
         };
     }
 
+    /**
+     * "1 bath" / "2 baths".
+     */
     private static function baths(int $count): string
     {
         return $count === 1 ? '1 bath' : "{$count} baths";
     }
 
+    /**
+     * "1 bed" / "2 beds".
+     */
     private static function beds(int $count): string
     {
         return $count === 1 ? '1 bed' : "{$count} beds";
     }
 
+    /**
+     * A price with commas, e.g. £250,000.
+     */
     private static function money(int $amount): string
     {
         return '£'.number_format($amount);

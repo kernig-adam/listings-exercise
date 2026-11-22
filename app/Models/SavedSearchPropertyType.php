@@ -21,6 +21,8 @@ class SavedSearchPropertyType extends Model
     protected $fillable = ['property_type'];
 
     /**
+     * Property type is a PropertyType enum.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -29,6 +31,8 @@ class SavedSearchPropertyType extends Model
     }
 
     /**
+     * The search this type belongs to.
+     *
      * @return BelongsTo<SavedSearch, $this>
      */
     public function savedSearch(): BelongsTo

@@ -45,6 +45,8 @@ class Alert extends Model
     ];
 
     /**
+     * Reason is an AlertReason enum; read_at is a date, null while unread.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -56,6 +58,8 @@ class Alert extends Model
     }
 
     /**
+     * The buyer this alert is for.
+     *
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
@@ -64,6 +68,8 @@ class Alert extends Model
     }
 
     /**
+     * The home the alert is about.
+     *
      * @return BelongsTo<Listing, $this>
      */
     public function listing(): BelongsTo
@@ -72,6 +78,8 @@ class Alert extends Model
     }
 
     /**
+     * The go-live event that created this alert.
+     *
      * @return BelongsTo<OutboxMessage, $this>
      */
     public function outboxMessage(): BelongsTo
@@ -80,6 +88,8 @@ class Alert extends Model
     }
 
     /**
+     * The saved searches this alert matched. Deleting a search removes the link, not the alert.
+     *
      * @return BelongsToMany<SavedSearch, $this>
      */
     public function savedSearches(): BelongsToMany
@@ -88,6 +98,8 @@ class Alert extends Model
     }
 
     /**
+     * Alerts the buyer has not yet opened.
+     *
      * @param  Builder<Alert>  $query
      */
     public function scopeUnread(Builder $query): void

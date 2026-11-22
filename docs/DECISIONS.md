@@ -272,6 +272,19 @@ Reading the finished backend myself, I found gaps the agents and tests hadn't fl
   - **A deliberate deviation from my brief:** a go-live message whose listing has since been **deleted** is marked as processed, with an info log line (`not_found`), not left to retry. Retrying a listing that no longer exists would loop forever. Only malformed payloads and unknown message types count as failures.
   - **Not testable honestly here, so not faked:** true concurrency (two relays, or two saves racing the cap) can't be reproduced on SQLite. Idempotency is proven by reprocessing instead.
 
+### Code style: Laravel's Pint preset, not strict PSR-12
+
+I asked for a review against PSR-12. The code passes the project's configured style: Laravel Pint's default `laravel` preset, which builds on PSR-12 and is enforced in CI with `pint --test`.
+
+Checked against **strict PSR-12** (Pint's `psr12` preset, report only), 16 files differ. **Every difference is a Laravel convention the original codebase also uses:**
+- `return new class extends Migration` in migrations (PSR-12 wants `new class ()` and the brace on its own line), in all of them, including the original five
+- multi-line closures inside method arguments in tests, including the original `ListingPageTest`
+- several traits on one line (`use HasFactory, Notifiable;`) in the original `User.php`
+- empty constructor bodies written `) {}`
+- the rest are generated, gitignored `bootstrap/cache` files
+
+**Decision: keep Laravel's style.** It's the style the codebase defines and CI enforces. Switching would reformat original files for no behavioural gain, which is the churn "work with the codebase" warns against, and changing only our own files would make the code inconsistent. If the team's standard is strict PSR-12, it's a one-line `pint.json` (`{"preset": "psr12"}`) plus a single repo-wide reformatting commit, done as its own change.
+
 ## Deliberately left out
 
 - **Sending anything.** No email, SMS or push. Alerts are persisted and shown in the app, which is what the brief asks for. Delivery would hang off the same alert record later.

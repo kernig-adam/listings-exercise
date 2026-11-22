@@ -54,6 +54,8 @@ class Listing extends Model
     ];
 
     /**
+     * Price and counts are whole numbers; property type and status are enums.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -103,6 +105,8 @@ class Listing extends Model
     }
 
     /**
+     * The branch advertising this home; its region is what searches match on.
+     *
      * @return BelongsTo<Branch, $this>
      */
     public function branch(): BelongsTo

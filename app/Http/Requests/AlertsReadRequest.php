@@ -32,6 +32,9 @@ class AlertsReadRequest extends FormRequest
     }
 
     /**
+     * The validated alert ids to mark read, as integers.
+     * Not yet proven to be the user's; the controller checks ownership.
+     *
      * @return list<int>
      */
     public function alertIds(): array

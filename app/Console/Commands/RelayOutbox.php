@@ -20,6 +20,10 @@ class RelayOutbox extends Command
         OutboxMessage::LISTING_WENT_LIVE => ListingWentLive::class,
     ];
 
+    /**
+     * Publishes every unsent outbox message to its consumer, oldest first, and marks it sent.
+     * A failed message stays unsent and is retried on the next run; the others still go. Returns FAILURE if any failed.
+     */
     public function handle(): int
     {
         $started = hrtime(true);

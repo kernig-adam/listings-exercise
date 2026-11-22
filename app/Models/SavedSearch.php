@@ -52,6 +52,8 @@ class SavedSearch extends Model
     ];
 
     /**
+     * Bounds are integers so they compare numerically against listings.
+     *
      * @return array<string, string>
      */
     protected function casts(): array
@@ -67,6 +69,8 @@ class SavedSearch extends Model
     }
 
     /**
+     * The buyer who owns this search.
+     *
      * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
@@ -75,6 +79,8 @@ class SavedSearch extends Model
     }
 
     /**
+     * The regions this search covers; none means any region.
+     *
      * @return HasMany<SavedSearchRegion, $this>
      */
     public function regions(): HasMany
@@ -83,6 +89,8 @@ class SavedSearch extends Model
     }
 
     /**
+     * The property types this search covers; none means any type.
+     *
      * @return HasMany<SavedSearchPropertyType, $this>
      */
     public function propertyTypes(): HasMany
@@ -91,6 +99,8 @@ class SavedSearch extends Model
     }
 
     /**
+     * The alerts this search has produced.
+     *
      * @return BelongsToMany<Alert, $this>
      */
     public function alerts(): BelongsToMany

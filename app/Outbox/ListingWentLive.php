@@ -19,6 +19,10 @@ use InvalidArgumentException;
  */
 class ListingWentLive
 {
+    /**
+     * Creates or refreshes one alert per user whose saved searches match the listing that went live.
+     * Safe to run twice for the same message. Throws if the payload is malformed, so the message stays unsent.
+     */
     public function handle(OutboxMessage $message): void
     {
         $listingId = $this->listingId($message);
@@ -110,6 +114,9 @@ class ListingWentLive
         return $listingId;
     }
 
+    /**
+     * Logs why no alerts were made, so a quiet go-live can be explained later.
+     */
     private function skip(OutboxMessage $message, int $listingId, string $reason): void
     {
         Log::info('Listing went live, no alerts', [

@@ -9,6 +9,8 @@ use Illuminate\Validation\ValidationException;
 class ListingIndexRequest extends SearchCriteriaRequest
 {
     /**
+     * The search rules shared with saving a search, plus paging.
+     *
      * @return array<string, mixed>
      */
     public function rules(): array

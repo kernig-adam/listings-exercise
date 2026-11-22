@@ -21,6 +21,8 @@ class SavedSearchRegion extends Model
     protected $fillable = ['region'];
 
     /**
+     * The search this region belongs to.
+     *
      * @return BelongsTo<SavedSearch, $this>
      */
     public function savedSearch(): BelongsTo

@@ -29,6 +29,8 @@ class OutboxMessage extends Model
     protected $fillable = ['type', 'payload', 'sent_at'];
 
     /**
+     * The payload is read as an array; sent_at is null until the message has been sent.
+     *
      * @return array<string, string>
      */
     protected function casts(): array

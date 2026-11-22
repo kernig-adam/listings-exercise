@@ -25,6 +25,8 @@ class Branch extends Model
     ];
 
     /**
+     * The listings this branch advertises.
+     *
      * @return HasMany<Listing, $this>
      */
     public function listings(): HasMany

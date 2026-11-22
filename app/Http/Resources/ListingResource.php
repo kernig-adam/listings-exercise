@@ -15,6 +15,8 @@ class ListingResource extends JsonResource
     private const PLACEHOLDER_IMAGES = 5;
 
     /**
+     * The listing details sent to the page. Enums go out as a value plus a label.
+     *
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

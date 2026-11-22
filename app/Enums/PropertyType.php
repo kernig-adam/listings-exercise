@@ -29,6 +29,9 @@ enum PropertyType: string
         return $options;
     }
 
+    /**
+     * Singular name for a select option or a single listing.
+     */
     public function label(): string
     {
         return match ($this) {

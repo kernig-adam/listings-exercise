@@ -17,6 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class RequireUser
 {
+    /**
+     * Refuses the request with a 401 before the controller runs if there is no user.
+     */
     public function handle(Request $request, Closure $next): Response
     {
         abort_if($request->user() === null, 401);

@@ -15,6 +15,9 @@ use Illuminate\Support\Arr;
  */
 abstract class SearchCriteriaRequest extends FormRequest
 {
+    /**
+     * Anyone may use this form; the route middleware decides who gets in.
+     */
     public function authorize(): bool
     {
         return true;
@@ -40,6 +43,8 @@ abstract class SearchCriteriaRequest extends FormRequest
     }
 
     /**
+     * Turns "a,b", an array or a single value into a plain list, dropping blanks.
+     *
      * @return list<mixed>
      */
     private function list(string $key): array
@@ -90,6 +95,8 @@ abstract class SearchCriteriaRequest extends FormRequest
     }
 
     /**
+     * Friendlier error messages for a minimum that is higher than its maximum.
+     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -112,6 +119,9 @@ abstract class SearchCriteriaRequest extends FormRequest
     }
 
     /**
+     * A rule that fails if any item is not one of the allowed values.
+     * Gives one error per field, however many items are bad.
+     *
      * @param  list<string>  $known
      */
     private function allKnown(array $known, string $message): Closure
@@ -127,6 +137,10 @@ abstract class SearchCriteriaRequest extends FormRequest
         };
     }
 
+    /**
+     * The validated input as a SearchCriteria, the one shape for "a search" across the app.
+     * Only call after validation has passed.
+     */
     public function criteria(): SearchCriteria
     {
         return SearchCriteria::fromInput($this->validated());

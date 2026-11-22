@@ -32,6 +32,8 @@ class User extends Authenticatable
     }
 
     /**
+     * The user's saved searches. Always load through this so other users' are out of reach.
+     *
      * @return HasMany<SavedSearch, $this>
      */
     public function savedSearches(): HasMany
@@ -40,6 +42,8 @@ class User extends Authenticatable
     }
 
     /**
+     * The user's alerts. Always load through this so other users' are out of reach.
+     *
      * @return HasMany<Alert, $this>
      */
     public function alerts(): HasMany

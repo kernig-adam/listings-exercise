@@ -12,6 +12,10 @@ use Inertia\Response;
 
 class AlertController extends Controller
 {
+    /**
+     * The signed-in buyer's alerts, one card per home, newest first.
+     * Each home's alert history is loaded in one query for the whole page.
+     */
     public function index(Request $request): Response
     {
         $user = $this->currentUser($request);
@@ -52,6 +56,10 @@ class AlertController extends Controller
         ]);
     }
 
+    /**
+     * Marks the user's alerts for these homes as read.
+     * Returns 404 and changes nothing if any of the ids isn't theirs.
+     */
     public function markRead(AlertsReadRequest $request): RedirectResponse
     {
         $user = $this->currentUser($request);

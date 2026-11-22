@@ -16,6 +16,9 @@ class SavedSearchController extends Controller
 {
     private const PER_PAGE = 15;
 
+    /**
+     * The signed-in buyer's saved searches, newest first, plus the most they may keep.
+     */
     public function index(Request $request): Response
     {
         // `id` breaks ties between searches created in the same second, so
