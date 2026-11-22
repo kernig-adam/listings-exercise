@@ -55,19 +55,6 @@ class AlertPageTest extends TestCase
         $response->assertInertia(fn (AssertableInertia $page) => $page->has('alertList.data', 1));
     }
 
-    public function test_another_users_alerts_are_never_marked_read(): void
-    {
-        // Arrange
-        $other = Alert::factory()->create();
-        Alert::factory()->for($this->user)->create();
-
-        // Act
-        $this->get(route('alerts.index'));
-
-        // Assert
-        $this->assertNull($other->fresh()->read_at);
-    }
-
     public function test_an_alert_exposes_its_reason_and_listing(): void
     {
         // Arrange
@@ -150,37 +137,42 @@ class AlertPageTest extends TestCase
             ->where('alertList.data.14.is_new', true));
     }
 
-    public function test_viewing_page_one_marks_only_that_page_read(): void
+    public function test_viewing_the_page_marks_nothing_read(): void
     {
         // Arrange
-        foreach (range(1, 16) as $i) {
-            Alert::factory()->for($this->user)->create(['updated_at' => now()->subMinutes($i)]);
-        }
-        $oldest = Alert::query()->orderBy('updated_at')->firstOrFail();
+        Alert::factory()->for($this->user)->count(2)->create();
 
         // Act
         $response = $this->get(route('alerts.index'));
 
         // Assert
-        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alerts.unread', 1));
-        $this->assertSame(1, Alert::query()->unread()->count());
-        $this->assertNull($oldest->fresh()->read_at);
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alerts.unread', 2));
+        $this->assertSame(2, Alert::query()->unread()->count());
     }
 
-    public function test_marking_read_does_not_reorder_the_list(): void
+    public function test_a_card_stays_new_on_every_view_while_unread(): void
     {
         // Arrange
-        $newer = Alert::factory()->for($this->user)->create(['updated_at' => now()->subMinute()]);
-        Alert::factory()->for($this->user)->create(['updated_at' => now()->subHour()]);
+        Alert::factory()->for($this->user)->create();
         $this->get(route('alerts.index'));
 
         // Act
         $response = $this->get(route('alerts.index'));
 
         // Assert
-        $response->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('alertList.data.0.id', $newer->id)
-            ->where('alertList.data.0.is_new', false));
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.data.0.is_new', true));
+    }
+
+    public function test_a_card_with_every_alert_read_is_not_new(): void
+    {
+        // Arrange
+        Alert::factory()->for($this->user)->read()->create();
+
+        // Act
+        $response = $this->get(route('alerts.index'));
+
+        // Assert
+        $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.data.0.is_new', false));
     }
 
     public function test_the_unread_count_is_shared_on_every_page(): void
@@ -245,11 +237,11 @@ class AlertPageTest extends TestCase
         $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.meta.total', 3));
     }
 
-    public function test_viewing_marks_every_alert_for_the_shown_homes_read_and_the_card_is_new(): void
+    public function test_a_card_is_new_when_an_older_alert_for_its_home_is_unread(): void
     {
         // Arrange
         $listing = Listing::factory()->live()->create();
-        $older = Alert::factory()->for($this->user)->create(['listing_id' => $listing->id, 'updated_at' => now()->subDays(2)]);
+        Alert::factory()->for($this->user)->create(['listing_id' => $listing->id, 'updated_at' => now()->subDays(2)]);
         Alert::factory()->for($this->user)->read()->create(['listing_id' => $listing->id, 'updated_at' => now()->subDay()]);
 
         // Act
@@ -257,7 +249,6 @@ class AlertPageTest extends TestCase
 
         // Assert
         $response->assertInertia(fn (AssertableInertia $page) => $page->where('alertList.data.0.is_new', true));
-        $this->assertNotNull($older->fresh()->read_at);
     }
 
     public function test_the_unread_count_counts_homes_not_alerts(): void

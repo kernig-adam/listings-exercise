@@ -14,6 +14,7 @@ Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('lis
 // visible is enforced separately, by loading through the user's relationships.
 Route::middleware(RequireUser::class)->group(function () {
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
+    Route::patch('/alerts', [AlertController::class, 'markRead'])->middleware('throttle:alerts')->name('alerts.read');
 
     Route::get('/saved-searches', [SavedSearchController::class, 'index'])->name('saved-searches.index');
     Route::middleware('throttle:saved-searches')->group(function () {

@@ -31,5 +31,9 @@ class AppServiceProvider extends ServiceProvider
         // Saving and deleting searches: generous for a person, tight for a script.
         RateLimiter::for('saved-searches', fn (Request $request) => Limit::perMinute(10)
             ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        // Marking alerts read fires as cards are viewed, so it needs more headroom.
+        RateLimiter::for('alerts', fn (Request $request) => Limit::perMinute(30)
+            ->by((string) ($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 }

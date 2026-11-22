@@ -73,7 +73,8 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 - **P8: one card per home**, paginated at 15, newest first. The card reuses the listing card, with a **"New"** pill when unread, the reason pill from `reason_label` (e.g. "Back on the market"; text, not colour alone, never hard-coded), a **"Matched: …"** line (or "Matched a search you've since deleted" when `matched_deleted`), and "First alerted {date}" when the home has had more than one alert.
 - **No longer available** (`is_available` false): a muted card with a text label, and **no link**. `ListingCard` needs a non-link variant.
-- The Alerts nav link **must not prefetch**, because viewing the page marks alerts read.
+- **Marking read (2b backend first):** `GET /alerts` stops marking alerts read (no side effects; `is_new` reflects the real unread state). New route `PATCH /alerts` (named, behind `RequireUser`, throttled) with `{ alert_ids: int[], read: true }` and a Form Request: ids required, distinct, at most one page (15), each must be one of the **user's** alerts (others → 404/422, never touched). It marks read every alert for those alerts' homes (consistent with one card per home), then redirects back. Tests first.
+- **UI:** once the Alerts page is shown, it sends one `PATCH` with the displayed cards' alert ids, using `preserveState`, `preserveScroll` and `only: ['alerts']`, so only the shared unread count refreshes and the "New" pills stay visible for this view. The bell link **may now prefetch**.
 - Empty state explains how alerts work and links to saving a search.
 
 ## Semantic HTML

@@ -24,6 +24,7 @@ class AuthenticationTest extends TestCase
     {
         return [
             'alerts' => ['get', '/alerts'],
+            'mark alerts read' => ['patch', '/alerts'],
             'saved searches' => ['get', '/saved-searches'],
             'save a search' => ['post', '/saved-searches'],
             'delete a search' => ['delete', '/saved-searches/1'],
