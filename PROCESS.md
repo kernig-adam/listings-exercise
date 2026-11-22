@@ -412,5 +412,41 @@ I split step 3 in two (3a: search and saved searches; 3b: outbox, relay, consume
 
 **Reviewed:** *pending*
 
+### 18. Task 2, step 1: product owner review and RUM baseline
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `product-owner` (Opus) · **Baseline commit:** `8273f09`
+
+**Review (from the docs and code):**
+- **Gaps:** the listings page needs a plain-words description of the *current* search from the backend, so Vue doesn't re-implement it; and `image_url`, WebP files and image credits are missing.
+- **Must-have UI rules:** don't prefetch the Alerts link (viewing marks alerts read); a visible hint on the disabled Save; hide "✓" from screen readers; move focus sensibly after a delete; no link on unavailable homes; alert reasons come from props.
+- **Corrected in my review:** the agent claimed a rate-limited save shows a raw 429. Step 3a already turns it into a friendly message, and a test covers it. Its valid point is that save and delete share one 10-a-minute budget.
+- **Seven decisions put to me (P1–P7).**
+
+**RUM baseline (measured in Chrome).** It needed two attempts. The extension wasn't connected until I restarted after the session's account changed. Dev-server timings are relative.
+
+| Page / action | LCP | CLS | Latency | Errors | Buyer friction |
+| --- | --- | --- | --- | --- | --- |
+| `/` cold load | 652ms | 0 | TTFB 222ms | none | No way to reach Saved searches or Alerts; no Save |
+| Filter submit | — | 0 | ~199ms request, <16ms interaction | none | Works, but a second submit produces `region[0]=` array URLs |
+| Array-form URL | — | 0 | — | none | **The Area select is blank while results are filtered**, so the filter is hidden |
+| Max price £275k | — | 0 | — | none | The browser blocks it: the input steps in £10k |
+| No results | — | 0 | ~196ms | none | Dead end; no way forward |
+| `/?region=Atlantis` | ~650ms | 0 | — | none | **Silently shows all 184 homes**, with no message |
+| Detail page, then "Back to all listings" | — | 0 | ~167ms | none | Drops the filters and page (browser back keeps them); no photo |
+| Keyboard only | — | 0 | — | none | Focus always visible, no traps; no skip link past the filters |
+| `/saved-searches` | 240ms | 0 | — | none | A bare link; no delete, count or empty state |
+| `/alerts` | 264ms | 0 | — | none | The same home twice (new, then back on the market), with no date, price, read state or "matched" line |
+
+**Conclusion:** performance isn't the problem (CLS 0 everywhere, LCP under 700ms, no errors or failed requests). The "after" comparison is about **journey friction and whether the buyer can understand what they're seeing**.
+
+**My decisions (P1–P8), asked one by one:**
+- Accepted as recommended: backend sends the current-search description (P1); Save saves the applied URL filters (P2); a non-preset value shows as an extra option (P3); the last delete on a page lands on the last non-empty page (P6); "3 of 20 saved" (P7); one card per home on Alerts (P8, raised by the baseline itself).
+- **P4:** I first chose "We'll alert you", then changed to "We'll add new matching homes to your Alerts". Alerts are in-app only with no backfill, so the shorter line over-promises.
+- **P5, overruled:** save and delete keep one shared rate limit, rather than a looser one for deletes. It's simpler, and the case is rare.
+
+The UI task now includes these decisions, a new **step 1b** (backend prep: P1, P6, P7, P8, images), and the baseline's fixes as must-haves (comma URLs, visible bad-link errors, skip link, "Back to all listings" keeps filters).
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

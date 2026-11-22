@@ -1,6 +1,6 @@
 # Task 2 — UI: brand shell, filters, saved searches and alerts
 
-**Status:** designed (UI/UX grilling session, decisions in [NOTES.md](../../NOTES.md)); not started.
+**Status:** designed; product owner reviewed; RUM baseline captured at `8273f09` (PROCESS.md entry 18); decisions P1–P8 made by Adam. Next: step 1b (backend prep), then step 2 (UI).
 **Depends on:** [Task 1 (backend)](01-backend-saved-search-alerts.md) for routes and props.
 **Branch:** `feature/saved-search-alerts`.
 
@@ -12,12 +12,22 @@ Buyers can filter by ranges and several regions and types, save a search in one 
 
 | Step | Agent | Model | Owns |
 | --- | --- | --- | --- |
-| 1 | `product-owner` | Opus | Review the flows for buyer value before code |
+| 1 | `product-owner` | Opus | Review the flows for buyer value before code, plus the RUM baseline ✅ |
+| 1b | `backend` | Sonnet | Backend prep the UI needs (below), tests first |
 | 2 | `ui` | Sonnet | Theme tokens, shell, pages, components, Vitest + axe tests |
 | 3 | `product-owner` | Opus | Use the built flows in Chrome (RUM-style: vitals, errors, friction) and report |
 | 4 | main session | Opus | Review the diff, run the checks, show Adam, commit only on his go-ahead |
 
 Agents edit only; they never commit. Styling: Tailwind token classes only, no inline styles, no `<style>` blocks, no arbitrary values, no `!important`.
+
+## Step 1b: backend prep (before the UI agent)
+
+- **P1:** the listings page gets a `searchDescription` prop (`SearchCriteria::description()` of the applied filters; null when nothing is filtered).
+- **P6:** deleting a saved search redirects to the last page that still has searches (never a false empty page).
+- **P7:** the Saved searches page already gets `savedSearchLimit`; add the user's total (`savedSearchCount`), so "3 of 20 saved" isn't computed from one page.
+- **P8:** the Alerts page shows **one card per home**: the latest alert, plus `first_alerted_at` and `alert_count` for that home. Pagination is by home. Viewing marks read every alert for the homes shown. The unread count counts homes with unread alerts, so it matches what the buyer sees.
+- **Images:** move the 5 photos to `public/images/listings/`, convert them to WebP at card size, add `CREDITS.md` (source: Unsplash, Unsplash License; per-photo links to be filled in by Adam), and add `image_url` to `ListingResource` (picked deterministically by `id % count`).
+- **P5 (no change):** save and delete keep one shared 10-a-minute limit.
 
 ## Brand and shell
 
@@ -29,8 +39,7 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 ## Listing images (placeholders)
 
-- **Source:** free-licensed Unsplash photos in `resources/images/listings/house-*.png` (5 now; replace or extend only with images under the Unsplash licence, never sponsored iStock results). Record each photo's Unsplash URL and photographer in `resources/images/listings/CREDITS.md`.
-- **Prepare:** resize to card size and convert to WebP; keep the files small.
+- **Source:** free-licensed Unsplash photos, prepared in step 1b as WebP in `public/images/listings/` with `CREDITS.md` (replace or extend only with images under the Unsplash licence, never sponsored iStock results).
 - **Assignment is data-driven:** `ListingResource` adds `image_url`, picked deterministically from the listing ID (`id % count`), so a listing always shows the same photo. No schema change, nothing decided in Vue.
 - **Accessibility:** decorative (`alt=""`). They aren't photos of the actual home, and the card's address and details already describe it.
 - **Performance:** `width`/`height` set (no layout shift, CLS), `loading="lazy"` below the fold, `decoding="async"`.
@@ -40,26 +49,30 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 - **Filters in a left panel** on desktop, behind a "Filters" button on mobile.
   - **Regions and property types:** pill-style chips over native checkboxes (`fieldset` + `legend`). Options from props (data-driven), never hard-coded.
-  - **Price and bedrooms:** min/max **preset dropdowns** from props ("No min" … "No max"). The max hides values below the chosen min.
-  - The existing **"Search" button** applies filters to the URL (comma-separated several values).
-- **"Save this search"** next to the results count, with a plain-words summary of what will be saved. States:
-  - disabled with a hint when nothing is filtered
-  - **"Already saved ✓"** (from props: no request needed)
+  - **Price and bedrooms:** min/max **preset dropdowns** from props ("No min" … "No max"). The max hides values below the chosen min. **P3:** a non-preset value in the URL (e.g. £180,000) appears as an extra, selected option.
+  - The existing **"Search" button** applies filters to the URL. **Always comma-separated** (`region=Liverpool,Newcastle`), never `region[0]=` (the baseline found that form leaves the select blank while filtering).
+  - **Field errors from a bad link** (e.g. `?region=Atlantis`) are shown next to their field. The baseline showed every home silently.
+  - A **skip link** to the results, before the filters.
+- **"Save this search"** next to the results count, with the backend's `searchDescription` (P1) as the summary. **P2:** it saves the **applied** URL filters, never unsubmitted panel values. States:
+  - disabled when nothing is filtered, with the hint as **visible text** (a disabled button can't take focus)
+  - **"Already saved"** from `currentSearchSaved` (no request needed). The "✓" is `aria-hidden`.
   - saving (disabled)
-  - success: an inline message in a polite live region, with a link to Saved searches
-  - error: the API message (e.g. cap reached)
-- **Empty results:** "No homes match yet. Save this search and we'll alert you when one does", with the Save button.
+  - success: `flash.status` in a polite live region, with a link to Saved searches
+  - error: the `criteria` message next to the button, tied with `aria-describedby` (cap, duplicate, rate limit)
+- **Empty results (P4):** "No homes match yet. Save this search and we'll add new matching homes to your Alerts.", with the Save button.
+- **Detail page:** "Back to all listings" returns to the buyer's filtered results and page, not a bare `/`.
 
 ## Saved searches page
 
-- Paginated at 15. Each search shows its plain-words description and its criteria as chips.
-- **"View homes"** link (the listings URL with its filters). **Delete:** an inline two-step confirmation ("Delete this search?" Delete / Cancel), focus managed, the result announced.
+- Paginated at 15. **P7:** shows "3 of 20 saved" (from `savedSearchCount` / `savedSearchLimit`). Each search shows its plain-words description and its criteria as chips.
+- **"View homes"** link (`view_url`). **Delete:** an inline two-step confirmation ("Delete this search?" Delete / Cancel). After deleting, focus moves to the next search, or to the heading if none is left (never `body`), and `flash.status` is announced.
 - Empty state explains saved searches and links to the listings page.
 
 ## Alerts page
 
-- Paginated at 15, newest first. Each alert reuses the listing card, with a **"New"** pill when unread, a **"Back on the market"** pill when the alert's reason is `back_on_market` (text, not colour alone), and a **"Matched: …"** line.
-- **No longer available:** a muted card with a text label, and no link.
+- **P8: one card per home**, paginated at 15, newest first. The card reuses the listing card, with a **"New"** pill when unread, the reason pill from `reason_label` (e.g. "Back on the market"; text, not colour alone, never hard-coded), a **"Matched: …"** line (or "Matched a search you've since deleted" when `matched_deleted`), and "First alerted {date}" when the home has had more than one alert.
+- **No longer available** (`is_available` false): a muted card with a text label, and **no link**. `ListingCard` needs a non-link variant.
+- The Alerts nav link **must not prefetch**, because viewing the page marks alerts read.
 - Empty state explains how alerts work and links to saving a search.
 
 ## Semantic HTML
