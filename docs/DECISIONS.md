@@ -171,7 +171,7 @@ Decided in a second grilling session, focused on the UI.
   - **Save saves the filters actually applied** (the URL), not half-edited panel values, so what's saved matches the results on screen and the "Already saved" check.
   - **A non-preset price or bedroom value from a link shows as an extra, selected option** in its dropdown, so the control never misrepresents the filter that's actually applied.
   - **Honest copy: "We'll add new matching homes to your Alerts."** Alerts are in-app only, and there's no backfill, so "We'll alert you" would imply email or push we don't send, and that older homes will arrive. (I first chose "We'll alert you", then changed my mind: it's a trust risk Support has already flagged.)
-  - **Saving and deleting keep one shared rate limit** (10 a minute). The product owner suggested a separate, looser limit for deletes. I kept one limit: it's simpler, and tidying more than 10 searches a minute is an edge case. **The limit is bound to the account**, not the IP, so one user can't get round it by changing networks, and one heavy user can't use up the allowance of others behind a shared IP (an office or mobile network). Combined with the 20-search cap, this bounds what a malicious account can do.
+  - **Saving and deleting keep one shared rate limit** (10 a minute). The product owner suggested a separate, looser limit for deletes. I kept one limit: it's simpler, and tidying more than 10 searches a minute is an edge case. **The limit is bound to the account**, not the IP, so one user can't get round it by changing networks, and one heavy user can't use up the allowance of others behind a shared IP (an office or mobile network). Combined with the 20-search cap, this bounds what a malicious account can do. *Correction, found by the hardening tests:* when I set this, the AI told me the code already keyed the limit by account. **It didn't.** Laravel ran the rate limiter before the auth stub, so there was no user yet and every limit was keyed by IP. The break-it suite caught it ("Rate limit hit" logged no `user_id`). The stub now runs before the rate limiter, and a test proves the limit is keyed per user.
   - **Deleting the last search on a page lands on the last page that still has searches,** never a false "no saved searches".
   - **Saved searches shows usage, e.g. "3 of 20 saved",** so buyers see the limit before they hit it.
   - **Viewing alerts is a safe GET; marking them read is an explicit PATCH.** Originally `GET /alerts` marked alerts read as a side effect, which breaks HTTP semantics (GET must be safe) and made prefetching the bell dangerous: hovering it would have marked alerts read unseen. Now the page loads with no side effects, and once it's shown it sends `PATCH /alerts` with the IDs of the alert cards displayed (`{ alert_ids: [...], read: true }`). PATCH, not POST or DELETE: a read alert isn't removed (it stays on the page and its history feeds "First alerted"), it has one field changed. One request per page view, every ID validated as the user's. The bell can now prefetch.
@@ -235,6 +235,43 @@ Decided in a grilling session (the AI questions me, I decide).
   - *Failures (documented, not built; theoretical at this size):* a failed message would stay unsent, recording its attempt count and last error, and be retried on the next run. After a set number of attempts (e.g. 5) it would be moved aside as failed, like a dead-letter queue, so one poison message can't block the rest. I'd **alarm on failed messages** (e.g. a CloudWatch alarm on the dead-letter count) so they're looked at quickly, and provide a way to **re-run** them once the cause is fixed. Sent messages would be cleaned up after a retention period (e.g. 30 days). In this exercise the relay simply leaves a failed message unsent, so the next run retries it.
   - *Delivery is at-least-once,* so the consumer must be idempotent. The unique (user, go-live event) constraint and insert-or-skip make a repeated message harmless.
 
+### Hardening after my own code review
+
+Reading the finished backend myself, I found gaps the agents and tests hadn't flagged:
+- **`$request->user()` is nullable, but controllers called `->alerts()` on it.** It was only safe because the `RequireUser` middleware ran first. That's protection by convention, not by type, and moving a route outside the guarded group would bring back a 500. A typed `currentUser()` helper now guarantees a `User` or returns a 401, with a test that hits the controllers **without** the middleware to prove it. (`#[CurrentUser]` injection would be neater, but it reads the auth guard, which the stub doesn't set.)
+- **The consumer trusted the outbox payload.** A malformed message would crash and retry every minute forever. The payload is now validated at that trust boundary and fails with a clear, logged error.
+- **Almost no logging.** There was one log line in the whole app. For an alerting system, "why didn't I get an alert?" must be answerable. Now logged:
+  - what each message produced (alerts created or refreshed, or why it was skipped)
+  - each relay run's processed, failed and duration
+  - full stack traces on failure
+  - security signals (attempts on other users' alert IDs, rate-limit hits)
+  - an audit of saves, deletes and reads
+  - each go-live
+
+  All logs carry **IDs and counts only, never personal data**, and tests assert that. In production I'd ship these as structured JSON to stdout or CloudWatch, using the outbox message ID to trace one go-live through to its alerts.
+- Smaller fixes: alert IDs must be positive, an explicit `authorize()` on the read request, and a listing going live without a date now gets `listed_at = now`.
+- **User-activity logging, to see how buyers actually use the system.** Monitoring usage is essential for a product like this: which areas and price bands people search, whether they save, whether alerts bring them back. So the app logs activity events on a **dedicated `activity` channel**, kept separate from error and security logs:
+  - searches performed (the criteria and the result count)
+  - listings viewed, **with whether the buyer came from an alert**, which gives alert-to-listing click-through, previously unmeasurable
+  - saved searches and alerts viewed
+  - searches saved and deleted, and alerts read
+
+  These are pseudonymous (user IDs only, no names, emails or addresses; search criteria are search terms, not personal data). In production they'd feed an analytics or event pipeline rather than a log file, with consent, retention limits and GDPR handled properly: behavioural data about identifiable users is still personal data, even when pseudonymised.
+- **An aggressive "try to break it" test suite** (`tests/Feature/Hardening/`), because the happy-path tests weren't enough:
+  - **hostile input** on every endpoint (wrong types, huge and nested values, injection and script strings, unicode, floods)
+  - **ownership attacks** (other users' IDs, guesses, missing records)
+  - **failure injection** in the outbox path (consumer crashes mid-loop, poisoned messages, data changing between go-live and relay)
+  - **idempotency and ordering** (repeat processing, multiple go-lives)
+  - **boundaries**
+  - a **log contract**: each failure path asserts both the outcome and the exact log (level, message, keys), and that no personal data appears in any log.
+  - Anything that can't be tested honestly here (true concurrency on SQLite) is stated rather than faked. On a real project I'd add mutation testing (e.g. Infection) to prove the suite catches deliberate bugs, which I did by hand earlier.
+  - **What the suite found (about 400 new tests, 615 in total):**
+    - **A 500 on `DELETE /saved-searches/99999999999999999999`:** the ID overflowed PHP's integer. The route now accepts at most 18 digits, so it's a 404.
+    - **Rate limits keyed by IP, not by account** (see the correction under the P5 decision): the limiter ran before the auth stub.
+    - Both were fixed after their tests failed first.
+  - **A deliberate deviation from my brief:** a go-live message whose listing has since been **deleted** is marked as processed, with an info log line (`not_found`), not left to retry. Retrying a listing that no longer exists would loop forever. Only malformed payloads and unknown message types count as failures.
+  - **Not testable honestly here, so not faked:** true concurrency (two relays, or two saves racing the cap) can't be reproduced on SQLite. Idempotency is proven by reprocessing instead.
+
 ## Deliberately left out
 
 - **Sending anything.** No email, SMS or push. Alerts are persisted and shown in the app, which is what the brief asks for. Delivery would hang off the same alert record later.
@@ -271,4 +308,4 @@ Decided in a grilling session (the AI questions me, I decide).
 - **Limits are artificial.** 20 saved searches and 10 saves a minute per account were picked to bound abuse, not from data.
 - **Broad searches can still be noisy.** A search for just "Liverpool" alerts on every Liverpool home. Alerts are in-app only and deduplicated, but at volume this needs digests or relevance limits.
 - **The alert card relies on the controller to attach its history** (first alerted, alert count, unread state). It fails loudly if that's missing, rather than showing wrong data, but it's a coupling: any new place that renders alerts must remember to do it. With more time I'd load those counts through an Eloquent relationship.
-- **Engagement signals are thin.** Deleting a saved search is a hard delete, and alert click-throughs aren't recorded, so "searches deleted soon after an alert" (a trust-loss signal) and "alert → listing" conversion can't be measured yet.
+- **Engagement signals are partial.** Activity logs now record alert-to-listing click-through, searches and saves. But deleting a saved search is a hard delete, so "searches deleted soon after an alert" (a trust-loss signal) needs those logs joined up in an analytics pipeline. There are no dashboards yet.

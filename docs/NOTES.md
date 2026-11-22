@@ -21,6 +21,7 @@ The bell shows **1**; **Alerts** shows the home as "New", with "Matched: Up to Â
 - **Don't spam (Support's ask):** one alert per home per go-live, linked to every search it matched. An unread alert is refreshed rather than repeated. **No backfill.** A re-listed home *does* alert again ("Back on the market"), because a fallen-through sale is exactly when a buyer wants to know.
 - **HTTP semantics:** viewing alerts is a safe GET; marking them read is a PATCH. That lets the bell prefetch.
 - **Security:** user-scoped routes need a user (401), and records load through the user (another user's record is a 404). Validation at the boundary, limits per account.
+- **Logging and monitoring:** system logs (what each go-live produced, relay runs, failures with stack traces), security warnings, and **user-activity events on their own channel** (searches, views, saves, alert click-through), so we can see how buyers use the product. IDs and counts only, never personal data; in production this would feed an analytics pipeline with consent and retention handled.
 - **Accessibility and brand:** WCAG 2.2 AA (axe in tests; Headers and WAVE checks by hand), semantic HTML, Street's brand as Tailwind tokens only.
 - **Worked with the codebase:** native PHP as the README defines, though I'd use Docker. I flagged problems rather than working around them: `composer dev` fails on Windows, leftover skeleton CI workflows, SQLite vs production.
 
@@ -34,4 +35,4 @@ A production-engine CI job; vulnerability checks (`composer audit`, `npm audit`,
 
 ## Where it won't hold up yet
 
-Matching runs one set-based query per go-live, which won't scale to millions of saved searches without partitioning or pre-computed subscriptions. The relay is a single polling process. Tests run on SQLite, not the production engine. Broad searches can be noisy. The 20-search and rate limits are guesses, not data.
+Matching runs one set-based query per go-live, which won't scale to millions of saved searches without partitioning or pre-computed subscriptions. The relay is a single polling process. Tests run on SQLite, not the production engine. Broad searches can be noisy. The 20-search and rate limits are guesses, not data. Activity logs go to a file here; real usage monitoring needs an event pipeline and dashboards.

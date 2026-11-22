@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The casts() method tells Eloquent how to hydrate these attributes, but static
@@ -82,13 +83,19 @@ class Listing extends Model
             $goingLive = $this->status === ListingStatus::Live
                 && (! $this->exists || $this->isDirty('status'));
 
+            // A live listing always has a date: the listings page orders by it.
+            if ($goingLive && $this->listed_at === null) {
+                $this->listed_at = now();
+            }
+
             $saved = parent::save($options);
 
             if ($saved && $goingLive) {
-                OutboxMessage::query()->create([
+                $message = OutboxMessage::query()->create([
                     'type' => OutboxMessage::LISTING_WENT_LIVE,
                     'payload' => ['listing_id' => $this->id, 'occurred_at' => now()->toIso8601String()],
                 ]);
+                Log::info('Listing went live', ['listing_id' => $this->id, 'outbox_message_id' => $message->id]);
             }
 
             return $saved;

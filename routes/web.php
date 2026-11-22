@@ -20,7 +20,8 @@ Route::middleware(RequireUser::class)->group(function () {
     Route::middleware('throttle:saved-searches')->group(function () {
         Route::post('/saved-searches', [SavedSearchController::class, 'store'])->name('saved-searches.store');
         Route::delete('/saved-searches/{id}', [SavedSearchController::class, 'destroy'])
-            ->whereNumber('id')
+            // 18 digits max: a longer number overflows the controller's int and would be a 500, not a 404.
+            ->where('id', '[0-9]{1,18}')
             ->name('saved-searches.destroy');
     });
 });

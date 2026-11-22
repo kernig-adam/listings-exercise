@@ -31,7 +31,7 @@ onMounted(() => {
     <AppLayout heading="Alerts">
         <ul v-if="alertList.data.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <li v-for="alert in alertList.data" :key="alert.id">
-                <ListingCard :listing="alert.listing" :linked="alert.is_available">
+                <ListingCard :listing="alert.listing" :linked="alert.is_available" from-alert>
                     <ul class="mt-3 flex flex-wrap gap-2">
                         <li v-if="alert.is_new"><span class="pill bg-brand-700 text-surface">New</span></li>
                         <li><span class="pill bg-brand-100 text-brand-900">{{ alert.reason_label }}</span></li>

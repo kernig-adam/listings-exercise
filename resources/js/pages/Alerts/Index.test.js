@@ -65,7 +65,7 @@ describe('Alerts page', () => {
 
         // Assert
         const [first, second] = wrapper.findAll('article');
-        expect(first.get('a').attributes('href')).toBe('/listings/1');
+        expect(first.get('a').attributes('href')).toBe('/listings/1?from=alert');
         expect(second.find('a').exists()).toBe(false);
         expect(second.text()).toContain('No longer available');
     });

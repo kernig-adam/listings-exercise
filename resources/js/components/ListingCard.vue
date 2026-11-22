@@ -6,6 +6,8 @@ defineProps({
     listing: { type: Object, required: true },
     // false for homes that are no longer available: same card, nothing to click.
     linked: { type: Boolean, default: true },
+    // Set on alert cards so the listing page can tell an alert click-through from browsing.
+    fromAlert: { type: Boolean, default: false },
     // Under a results h2 the cards are h3.
     headingTag: { type: String, default: 'h2' },
 });
@@ -34,7 +36,7 @@ defineProps({
             <component :is="headingTag">
             <component
                 :is="linked ? Link : 'div'"
-                v-bind="linked ? { href: `/listings/${listing.id}` } : {}"
+                v-bind="linked ? { href: `/listings/${listing.id}${fromAlert ? '?from=alert' : ''}` } : {}"
                 class="block focus:outline-none"
                 :class="{ 'after:absolute after:inset-0': linked }"
             >

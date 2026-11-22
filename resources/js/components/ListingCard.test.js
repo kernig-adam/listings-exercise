@@ -33,6 +33,14 @@ describe('ListingCard', () => {
         expect(wrapper.text()).toContain('3 bed');
     });
 
+    it('marks the link when the card is an alert card', () => {
+        // Arrange / Act
+        const wrapper = render({ fromAlert: true });
+
+        // Assert
+        expect(wrapper.get('a').attributes('href')).toBe('/listings/7?from=alert');
+    });
+
     it('has no link when the home is unavailable', () => {
         // Arrange / Act
         const wrapper = render({ linked: false });

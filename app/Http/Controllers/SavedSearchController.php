@@ -8,6 +8,7 @@ use App\Models\SavedSearch;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,11 +20,14 @@ class SavedSearchController extends Controller
     {
         // `id` breaks ties between searches created in the same second, so
         // paging never repeats or skips one.
-        $searches = $request->user()->savedSearches()
+        $user = $this->currentUser($request);
+        $searches = $user->savedSearches()
             ->with(['regions', 'propertyTypes'])
             ->latest()
             ->orderByDesc('id')
             ->paginate(self::PER_PAGE);
+
+        Log::channel('activity')->info('saved_searches.viewed', ['user_id' => $user->id, 'count' => $searches->total()]);
 
         return Inertia::render('SavedSearches/Index', [
             'savedSearchCount' => $searches->total(),
@@ -40,8 +44,10 @@ class SavedSearchController extends Controller
     {
         $criteria = $request->criteria();
 
-        DB::transaction(function () use ($request, $criteria): void {
-            $search = $request->user()->savedSearches()->create($criteria->attributes());
+        $user = $request->currentUser();
+
+        $search = DB::transaction(function () use ($user, $criteria): SavedSearch {
+            $search = $user->savedSearches()->create($criteria->attributes());
 
             foreach ($criteria->regions as $region) {
                 $search->regions()->create(['region' => $region]);
@@ -49,7 +55,11 @@ class SavedSearchController extends Controller
             foreach ($criteria->propertyTypes as $type) {
                 $search->propertyTypes()->create(['property_type' => $type]);
             }
+
+            return $search;
         });
+
+        Log::channel('activity')->info('saved_search.created', ['user_id' => $user->id, 'saved_search_id' => $search->id]);
 
         return back()->with('status', 'Search saved.');
     }
@@ -60,8 +70,9 @@ class SavedSearchController extends Controller
      */
     public function destroy(Request $request, int $id): RedirectResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
         $user->savedSearches()->findOrFail($id)->delete();
+        Log::channel('activity')->info('saved_search.deleted', ['user_id' => $user->id, 'saved_search_id' => $id]);
 
         // Deleting the last search on a page would otherwise bounce back to an
         // empty page that still has searches before it, so clamp to the last real page.

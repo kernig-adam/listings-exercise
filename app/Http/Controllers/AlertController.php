@@ -6,6 +6,7 @@ use App\Http\Requests\AlertsReadRequest;
 use App\Http\Resources\AlertResource;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -13,7 +14,7 @@ class AlertController extends Controller
 {
     public function index(Request $request): Response
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
 
         // One card per home (its newest alert). Refreshed alerts move up via
         // updated_at; `id` breaks ties so paging never repeats or skips a home.
@@ -40,6 +41,12 @@ class AlertController extends Controller
             $alert->setAttribute('history', $history[$alert->listing_id]);
         }
 
+        Log::channel('activity')->info('alerts.viewed', [
+            'user_id' => $user->id,
+            'homes_shown' => $alerts->count(),
+            'new_count' => $alerts->filter(fn ($alert) => $history[$alert->listing_id]->unread_count > 0)->count(),
+        ]);
+
         return Inertia::render('Alerts/Index', [
             'alertList' => AlertResource::collection($alerts),
         ]);
@@ -47,14 +54,21 @@ class AlertController extends Controller
 
     public function markRead(AlertsReadRequest $request): RedirectResponse
     {
-        $user = $request->user();
+        $user = $this->currentUser($request);
         $ids = $request->alertIds();
 
         // 404, not 422: an id that is not the user's gets the same answer whether
         // it belongs to someone else or does not exist, so nothing is confirmed.
         // Checked before any write, so a bad id changes nothing.
         $listingIds = $user->alerts()->whereKey($ids)->pluck('listing_id', 'id');
-        abort_unless($listingIds->count() === count($ids), 404);
+        if ($listingIds->count() !== count($ids)) {
+            Log::warning('Alert ids not owned by user', [
+                'user_id' => $user->id,
+                'requested' => count($ids),
+                'found' => $listingIds->count(),
+            ]);
+            abort(404);
+        }
 
         // Every unread alert for those homes is read, not only the cards' own, or
         // older ones would keep the unread badge up. toBase() skips updated_at,
@@ -63,6 +77,8 @@ class AlertController extends Controller
             ->whereIn('listing_id', $listingIds)
             ->toBase()
             ->update(['read_at' => now()]);
+
+        Log::channel('activity')->info('alerts.marked_read', ['user_id' => $user->id, 'homes' => $listingIds->unique()->count()]);
 
         return back(303);
     }

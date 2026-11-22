@@ -582,5 +582,39 @@ I asked the AI to check everything against TASK.md, with evidence for each line 
 
 **Reviewed:** *pending*
 
+### 24. Hand-back PR opened; backend hardening after my own review
+
+**Branch:** `feature/saved-search-alerts` (PR #2 to `main`) · **Agent:** `backend` (Sonnet), reviewed by the main session (Opus)
+
+**Hand-back PR #2 opened** using the template (start-here links to the docs, the `claude` label). CI was green (185 PHP tests at 98.6%, Vitest passing); merging stays blocked until I tick the attestation box.
+
+**Then I reviewed the backend myself** and found gaps the tests hadn't covered:
+- **Almost no logging:** one log line in the whole app.
+- **`$request->user()` is nullable,** but controllers called `->alerts()` on it, safe only because the middleware ran first.
+- **The consumer trusted the outbox payload.**
+
+I asked for typed user access, payload validation, system, security and audit logging, **user-activity logging** (so we can see how buyers use the product), and an **aggressive "try to break it" suite** asserting every failure's outcome *and* its log.
+
+**Built (tests first: 23 of 213 failing, then green):**
+- a typed `currentUser()` helper, proven with routes registered *without* the middleware (401, not 500)
+- payload validation in the consumer
+- 14 log events across the default and a new `activity` channel, IDs and counts only, the relay silent when idle
+- `?from=alert` for click-through, validated and never echoed
+- about 400 new tests in `tests/Feature/Hardening/`: hostile input, ownership attacks, failure injection, idempotency, boundaries, and a log contract
+
+**Real bugs the suite found:**
+1. An overflowing ID on delete was a 500; now a 404.
+2. **Rate limits were keyed by IP, not by account.** I'd been told the code already did per-account limits when I made that decision; it didn't. That's corrected in DECISIONS.md, and the auth stub now runs before the rate limiter.
+
+**Checked by me:** a live session on the running app, then the real log files:
+- activity: `search.performed` with the filters and result count, `saved_searches.viewed`, `listing.viewed` with `source: alert`, and a junk `from=<script>` logged as `browse`
+- app: `Listing went live`, then `Alerts generated` (created 1), then `Outbox relay run` (processed 1, 35ms)
+
+No personal data anywhere.
+
+**Checks (re-run by me):** PHP **615 passed**, 4,627 assertions, **98.8%** coverage; Vitest 75 passed; Pint; PHPStan 0 errors; build OK.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

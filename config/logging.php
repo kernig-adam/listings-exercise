@@ -112,6 +112,17 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Buyer activity (searches, views, saves), kept apart from app and error
+        // logs. A daily file is enough for dev; in production this channel would
+        // ship to an analytics/event pipeline instead.
+        'activity' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/activity.log'),
+            'level' => 'info',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => env('LOG_LEVEL', 'debug'),

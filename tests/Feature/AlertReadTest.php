@@ -161,4 +161,13 @@ class AlertReadTest extends TestCase
         // Assert
         $response->assertRedirect()->assertSessionHasErrors('criteria');
     }
+
+    public function test_non_positive_alert_ids_are_rejected(): void
+    {
+        // Act
+        $response = $this->patch(route('alerts.read'), ['alert_ids' => [0, -1], 'read' => true]);
+
+        // Assert
+        $response->assertSessionHasErrors(['alert_ids.0', 'alert_ids.1']);
+    }
 }

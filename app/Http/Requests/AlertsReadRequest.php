@@ -7,6 +7,15 @@ use Illuminate\Foundation\Http\FormRequest;
 class AlertsReadRequest extends FormRequest
 {
     /**
+     * Ownership is not decided here: the controller loads the ids through the
+     * user's alerts and answers 404 for any that are not theirs.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
      * `read` only accepts true: marking unread is not supported, and a field
      * that can only say yes keeps the verb honest if more changes arrive later.
      * The cap matches one page of cards.
@@ -17,7 +26,7 @@ class AlertsReadRequest extends FormRequest
     {
         return [
             'alert_ids' => ['required', 'array', 'min:1', 'max:15'],
-            'alert_ids.*' => ['integer', 'distinct'],
+            'alert_ids.*' => ['integer', 'min:1', 'distinct'],
             'read' => ['required', 'accepted'],
         ];
     }
