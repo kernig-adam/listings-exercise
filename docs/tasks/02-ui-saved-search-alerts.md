@@ -58,7 +58,7 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 ## Alerts page
 
-- Paginated at 15, newest first. Each alert reuses the listing card, with a **"New"** pill when unread and a **"Matched: …"** line.
+- Paginated at 15, newest first. Each alert reuses the listing card, with a **"New"** pill when unread, a **"Back on the market"** pill when the alert's reason is `back_on_market` (text, not colour alone), and a **"Matched: …"** line.
 - **No longer available:** a muted card with a text label, and no link.
 - Empty state explains how alerts work and links to saving a search.
 

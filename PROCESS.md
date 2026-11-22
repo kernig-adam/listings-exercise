@@ -312,5 +312,21 @@ A second grilling session on the UI only, because the first one leaned towards t
 
 **Reviewed:** *pending*
 
+### 14. Task 1, step 1: product owner review
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `product-owner` (Opus)
+
+The product owner agent reviewed the backend task against buyer value before any code.
+
+- **Browser baseline not captured:** the Claude in Chrome extension wasn't connected, so the agent stopped after three failed attempts, as its instructions say, and reviewed from the documents and code. I'll capture the RUM baseline before Task 2 changes the pages.
+- **Gaps it found, now in the task:** duplicate checks on *normalised* criteria; capturing "unread" before marking read, and marking only the page viewed; honest wording when all of an alert's searches have been deleted; the "View homes" URL from the Resource; friendly cap and rate-limit messages; tests for the plain-words description and for what a stale filter link shows the buyer.
+- **Decisions put to me:** (B) match the searches that exist when the consumer runs; (C) "read" means seen; (D) keep strict validation, but the buyer sees a clear message on a working page. All three accepted as recommended.
+- **(A) overruled:** the recommendation was that a re-listed home stays quiet, to protect "one alert per home". I rejected it. A re-listing is often a sale that fell through, exactly when a buyer who missed out wants to know. The design changed to deduplicating **per go-live event** (alerts unique per user and outbox message), with an `AlertReason` enum so the buyer sees "Back on the market", and a guard that refreshes an existing unread alert instead of adding another, so flip-flopping listings can't spam.
+- It also caught an inconsistency in NOTES.md ("min bedrooms" where the decision was a range), now fixed, and added two "where it won't hold up" points: noisy broad searches, and engagement signals we can't measure yet.
+
+**Checks:** none. Documents only.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

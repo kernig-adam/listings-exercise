@@ -83,8 +83,8 @@ Decided in a second grilling session, focused on the UI.
 Decided in a grilling session (the AI questions me, I decide).
 
 - **"Becomes live" = the status changes to live.** That covers publishing a draft, creating a listing already live, and coming back to live after under offer falls through. Edits to an already-live listing (e.g. a price drop) don't alert; that's a separate feature.
-- **Criteria: a price range (min–max), min bedrooms, property type, region.** I've looked at other property sites, and a range is key: a buyer looking at £100k–£200k isn't interested in anything under £100k. All criteria are optional, and matching shares its definition with the search page, so what you see when searching is what you get alerted about.
-- **One alert per home per user,** even if several saved searches match. A unique constraint in the database enforces it. This is the direct answer to Support's "please don't spam people".
+- **Criteria: a price range (min–max), a bedrooms range (min–max), property types, regions.** I've looked at other property sites, and a range is key: a buyer looking at £100k–£200k isn't interested in anything under £100k. All criteria are optional, and matching shares its definition with the search page, so what you see when searching is what you get alerted about.
+- **One alert per home per user each time it goes live,** even if several saved searches match. A unique constraint in the database enforces it. This is the direct answer to Support's "please don't spam people".
   - *At scale:* with heavy listing churn, generating and sending alerts one at a time won't hold. I'd batch them (e.g. collect matches and send a periodic digest), and could offer buyers a choice of instant or digest. That's a question of how the notification infrastructure is built for mass delivery, not something to build here.
 - **No backfill.** Only listings that go live after a search is saved create alerts. Backfill would flood new users on day one. It's also an abuse risk: a malicious user saving huge numbers of broad searches would trigger a burst of matches against every live listing.
 - **Alerts stored in their own table,** not Laravel's notifications table: a typed model, real foreign keys, a unique constraint, read/unread.
@@ -101,9 +101,18 @@ Decided in a grilling session (the AI questions me, I decide).
   - *Where I overruled the AI (the first time):* it recommended one property type per search, reasoning systemically (fewer tables, simpler matching). Commercially that's wrong: buyers are interested in several types, and the product should serve how they actually search. I identified and corrected this. It's a reminder that the AI optimises for system simplicity unless someone brings the commercial view.
 - **The search page takes several values too,** comma-separated in the query string (`?region=Liverpool,Newcastle`); old single-value links keep working.
   - *At scale:* as criteria grow into hundreds of combinations, query strings hit length limits. I'd store a search's filters server-side under a short unique key, so a saved or shared search loads by key and is unpacked server-side, retrievable at scale. Not needed at this size.
-- **One alert per home, across all of a user's searches,** linked to **every** saved search it matched (a many-to-many join table, not polymorphic: alerts are only about listings for now). It's deduplicated, but the buyer still sees which search or searches the home relates to.
+- **One alert per home per go-live, across all of a user's searches,** linked to **every** saved search it matched (a many-to-many join table, not polymorphic: alerts are only about listings for now). It's deduplicated, but the buyer still sees which search or searches the home relates to.
 - **20 saved searches per user, and rate-limited saves.** This is an artificial starting limit to bound abuse and matching cost, to be raised as product feedback comes in.
-- **Alerts page:** newest first, unread highlighted, an unread count in the header, marked read on view. Each alert says why it matched, and shows "No longer available" if the home has since gone under offer or sold.
+- **Alerts page:** newest first, unread highlighted, an unread count in the header. Each alert says why it matched, and shows "No longer available" if the home has since gone under offer or sold.
+  - **"Read" means seen:** only the alerts on the page being viewed are marked read, and each one's unread state is captured first so its "New" pill still shows. The header count updates after.
+  - **An alert whose searches have all been deleted** still says why, honestly: "Matched a search you've since deleted".
+- **A re-listed home alerts again, labelled "Back on the market".** If a home goes live, then under offer, then live again, matching buyers are told again. A sale falling through is exactly the moment a buyer who missed out wants to know. (The AI first recommended staying silent to protect "one alert per home"; I overruled it on commercial grounds.)
+  - *How it stays spam-free:* alerts are unique per user **per go-live event** (keyed by the outbox message), not per home. So several matching searches still produce one alert, and a repeated message still changes nothing, but a genuine re-listing is a new event. An `AlertReason` enum (`new_listing` / `back_on_market`) records why.
+  - *Flip-flop guard:* if the buyer still has an **unread** alert for that home, it's refreshed (moved to the top, shown as available) rather than duplicated, so a listing toggling between live and under offer can't flood anyone.
+- **Matching uses the saved searches that exist when the consumer runs,** not a snapshot from the moment of going live. The gap is under a minute; the worst case is a search saved in that minute hearing about a home just listed, which is harmless.
+- **Duplicate searches are compared after normalising:** order doesn't count (Liverpool,Newcastle = Newcastle,Liverpool), blanks count as absent, and paging is ignored. The UI's "Already saved" and the server use the same comparison.
+- **Bad or stale filter links** (a region that no longer exists, a hand-edited URL) are still rejected, but the buyer sees a clear message on a working page, never a broken one.
+- **Friendly limits:** the cap and the rate limit come back as plain messages ("You have 20 saved searches. Delete one to save another."), never a raw error page.
 - **Deleting a saved search keeps its alerts;** only the link to that search goes. Deleting means "stop telling me", not "forget what you told me".
 - **No listing-management screen.** A documented `tinker` one-liner sets a listing live for demos; the feature tests prove the flow.
 - **Transactional outbox for "listing went live".** The status change and an outbox message are written in the **same database transaction**, so a listing can never go live without the message, and no message can exist for a change that rolled back. A relay then publishes the message (in production, to an **SNS topic**), and a separate consumer generates the alerts.
@@ -111,7 +120,7 @@ Decided in a grilling session (the AI questions me, I decide).
   - *Built here:* the outbox table (written in the same transaction as the status change), and an `outbox:relay` command that hands each message to the alert consumer in-process, standing in for SNS and its subscriber. It's scheduled every minute for this exercise, and can be run by hand for demos. The SNS publisher is described, not built.
   - *The message is small:* a `listing.went_live` event with the key IDs and a timestamp only. The consumer reloads the listing and re-checks it's still live before alerting. At larger scale (very large subscription sets per event), fan-out may need other methods, e.g. partitioned consumers or pre-computed subscription indexes.
   - *Failures (documented, not built; theoretical at this size):* a failed message would stay unsent, recording its attempt count and last error, and be retried on the next run. After a set number of attempts (e.g. 5) it would be moved aside as failed, like a dead-letter queue, so one poison message can't block the rest. I'd **alarm on failed messages** (e.g. a CloudWatch alarm on the dead-letter count) so they're looked at quickly, and provide a way to **re-run** them once the cause is fixed. Sent messages would be cleaned up after a retention period (e.g. 30 days). In this exercise the relay simply leaves a failed message unsent, so the next run retries it.
-  - *Delivery is at-least-once,* so the consumer must be idempotent. The unique (user, listing) constraint and insert-or-skip make a repeated message harmless.
+  - *Delivery is at-least-once,* so the consumer must be idempotent. The unique (user, go-live event) constraint and insert-or-skip make a repeated message harmless.
 
 ## Deliberately left out
 
@@ -131,4 +140,7 @@ Decided in a grilling session (the AI questions me, I decide).
 
 ## Where it won't hold up yet
 
-*To be filled in once the feature exists.*
+*More to add once the feature exists.*
+
+- **Broad searches can still be noisy.** A search for just "Liverpool" alerts on every Liverpool home. Alerts are in-app only and deduplicated, but at volume this needs digests or relevance limits.
+- **Engagement signals are thin.** Deleting a saved search is a hard delete, and alert click-throughs aren't recorded, so "searches deleted soon after an alert" (a trust-loss signal) and "alert → listing" conversion can't be measured yet.
