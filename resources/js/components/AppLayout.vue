@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import IconTooltip from './IconTooltip.vue';
 import logo from '../../images/street-logo.svg?raw';
 
 defineProps({
@@ -25,18 +26,23 @@ const initials = computed(() =>
 const path = computed(() => page.url.split('?')[0]);
 const listingsCurrent = computed(() => path.value === '/' || path.value.startsWith('/listings'));
 const savedCurrent = computed(() => path.value.startsWith('/saved-searches'));
+const alertsLabel = computed(() => (unread.value ? `Alerts, ${unread.value} unread` : 'Alerts'));
 const alertsCurrent = computed(() => path.value.startsWith('/alerts'));
 </script>
 
 <template>
     <a
         href="#main"
-        class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-10 focus:bg-surface focus:px-4 focus:py-2 focus:text-ink focus-ring"
+        class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-30 focus:bg-surface focus:px-4 focus:py-2 focus:text-ink focus-ring"
     >
         Skip to main content
     </a>
 
-    <header class="bg-navy text-surface">
+    <!--
+        Sticky so it floats like street.co.uk. It is 68px tall (44px icons + py-3), and <html> has
+        scroll-pt-20 (80px) so a focused element or the #main skip target never lands underneath it (WCAG 2.4.11).
+    -->
+    <header class="sticky top-0 z-20 bg-navy text-surface shadow-card">
         <div class="mx-auto flex max-w-7xl items-center gap-x-4 px-4 py-3 sm:px-6 lg:px-8">
             <Link href="/" aria-label="Street" class="shrink-0 focus-ring-inverse">
                 <span class="logo-inverse block" aria-hidden="true" v-html="logo" />
@@ -55,6 +61,7 @@ const alertsCurrent = computed(() => path.value.startsWith('/alerts'));
             </nav>
 
             <div class="ml-auto flex items-center gap-1 sm:gap-3">
+                <IconTooltip text="Saved searches">
                 <Link
                     href="/saved-searches"
                     class="inline-flex size-11 items-center justify-center rounded-pill focus-ring-inverse"
@@ -70,14 +77,17 @@ const alertsCurrent = computed(() => path.value.startsWith('/alerts'));
                         />
                     </svg>
                 </Link>
+                </IconTooltip>
 
-                <!-- No prefetch on Alerts: it is the one link a hover must never touch. -->
+                <!-- Prefetching is safe: viewing alerts has no side effects (marking read is an explicit PATCH). -->
+                <IconTooltip :text="alertsLabel">
                 <Link
                     href="/alerts"
+                    prefetch
                     class="relative inline-flex size-11 items-center justify-center rounded-pill focus-ring-inverse"
                     :class="alertsCurrent ? 'bg-brand-800' : 'hover:bg-brand-900'"
                     :aria-current="alertsCurrent ? 'page' : null"
-                    :aria-label="unread ? `Alerts, ${unread} unread` : 'Alerts'"
+                    :aria-label="alertsLabel"
                 >
                     <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <path
@@ -94,9 +104,11 @@ const alertsCurrent = computed(() => path.value.startsWith('/alerts'));
                         {{ unread }}
                     </span>
                 </Link>
+                </IconTooltip>
 
                 <!-- The name is not shown, so the avatar carries it for assistive tech; the initials stay hidden so they aren't read as "A M". -->
-                <span v-if="user" class="flex items-center">
+                <IconTooltip v-if="user" :text="`Signed in as ${user.name}`">
+                <span class="flex items-center">
                     <span class="sr-only">Signed in as {{ user.name }}</span>
                     <span
                         class="flex size-8 items-center justify-center rounded-pill bg-brand-100 text-xs font-bold text-brand-900"
@@ -105,13 +117,14 @@ const alertsCurrent = computed(() => path.value.startsWith('/alerts'));
                         {{ initials }}
                     </span>
                 </span>
+                </IconTooltip>
             </div>
         </div>
     </header>
 
     <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <main id="main" tabindex="-1" class="focus:outline-none">
-            <h1 class="text-3xl font-bold tracking-tight text-ink">{{ heading }}</h1>
+            <h1 tabindex="-1" class="text-3xl focus:outline-none font-bold tracking-tight text-ink">{{ heading }}</h1>
             <p v-if="subheading" class="mt-1 text-muted">{{ subheading }}</p>
 
             <div class="mt-8">

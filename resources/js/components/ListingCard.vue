@@ -6,6 +6,8 @@ defineProps({
     listing: { type: Object, required: true },
     // false for homes that are no longer available: same card, nothing to click.
     linked: { type: Boolean, default: true },
+    // Under a results h2 the cards are h3.
+    headingTag: { type: String, default: 'h2' },
 });
 </script>
 
@@ -29,7 +31,7 @@ defineProps({
                 interaction so it stays keyboard-reachable and announces properly.
                 The stretched ::after makes the full card the hit area.
             -->
-            <h2>
+            <component :is="headingTag">
             <component
                 :is="linked ? Link : 'div'"
                 v-bind="linked ? { href: `/listings/${listing.id}` } : {}"
@@ -42,7 +44,7 @@ defineProps({
                     {{ listing.address_line_1 }}, {{ listing.city }}
                 </span>
             </component>
-            </h2>
+            </component>
 
             <p class="mt-1 text-sm text-muted">
                 {{ listing.bedrooms }} bed &middot; {{ listing.bathrooms }} bath &middot;
@@ -52,6 +54,8 @@ defineProps({
             <p class="mt-3 text-xs text-muted">
                 {{ listing.branch.name }} — {{ listing.branch.region }}
             </p>
+
+            <slot />
         </div>
     </article>
 </template>

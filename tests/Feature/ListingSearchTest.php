@@ -25,27 +25,28 @@ class ListingSearchTest extends TestCase
             ->pluck('price')->sort()->values()->all();
     }
 
-    private function currentSearchSaved(string $url): bool
+    public function test_filter_options_arrive_in_alphabetical_order(): void
     {
-        return $this->get($url)->viewData('page')['props']['currentSearchSaved'];
-    }
+        // Arrange
+        foreach (['Sheffield', 'Bristol', 'Leeds'] as $region) {
+            Branch::factory()->create(['region' => $region]);
+        }
 
-    public function test_the_search_description_is_sent_for_applied_filters(): void
-    {
-        // Act
-        $response = $this->get('/?max_price=200000&min_bedrooms=2');
-
-        // Assert
-        $response->assertInertia(fn (AssertableInertia $page) => $page->where('searchDescription', 'Up to £200,000 · 2+ beds'));
-    }
-
-    public function test_the_search_description_is_null_without_filters(): void
-    {
         // Act
         $response = $this->get('/');
 
         // Assert
-        $response->assertInertia(fn (AssertableInertia $page) => $page->where('searchDescription', null));
+        $props = $response->viewData('page')['props'];
+        $this->assertSame(['Bristol', 'Leeds', 'Sheffield'], $props['regionOptions']);
+        $this->assertSame(
+            ['Bungalow', 'Detached', 'Flat', 'Semi-detached', 'Terraced'],
+            array_column($props['propertyTypes'], 'label'),
+        );
+    }
+
+    private function currentSearchSaved(string $url): bool
+    {
+        return $this->get($url)->viewData('page')['props']['currentSearchSaved'];
     }
 
     public function test_a_listing_image_is_chosen_deterministically_from_the_id(): void

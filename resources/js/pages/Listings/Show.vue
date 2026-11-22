@@ -6,6 +6,9 @@ import { formatDate, formatPrice } from '../../format';
 defineProps({
     listing: { type: Object, required: true },
 });
+
+// The listings page remembers its URL, so back returns to the same filters and page.
+const backUrl = sessionStorage.getItem('listingsUrl') ?? '/';
 </script>
 
 <template>
@@ -49,7 +52,7 @@ defineProps({
             </div>
         </div>
 
-        <Link href="/" class="mt-6 inline-block text-sm text-brand-700 underline hover:text-brand-900 focus-ring">
+        <Link :href="backUrl" class="mt-6 inline-block text-sm text-brand-700 underline hover:text-brand-900 focus-ring">
             &larr; Back to all listings
         </Link>
     </AppLayout>

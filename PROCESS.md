@@ -525,5 +525,49 @@ I split the UI into 2a (foundations) and 2b (pages), so each is reviewable on it
 
 **Reviewed:** *pending*
 
+### 22. Task 2, step 2b: the pages, with my layout and accessibility changes
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `ui` (Sonnet) · **Backend tweak:** main session
+
+**Built:**
+- **Listings:** a full-width **navy filter card**:
+  - region and type chips over real checkboxes
+  - price, bedrooms and bathrooms preset ranges in **3 columns**; a non-preset value shows as an extra option
+  - comma URLs, field errors linked to their fields, Clear then Search on the right
+- **Save this search:** saves the *applied* filters, shows the backend's summary, and handles disabled (with a visible hint), "Already saved", saving, success (announced) and the friendly error. The empty-result copy invites a save.
+- **Detail page:** "Back to all listings" returns to the buyer's last filtered URL.
+- **Saved searches:** "N of 20 saved", criteria chips, "View homes", an inline two-step delete with focus management, and an empty state.
+- **Alerts:** one card per home, with "New", the reason label, "Matched: …" (or "a search you've since deleted"), "First alerted …", unavailable homes without a link, and **one PATCH when the page is shown**, refreshing only the unread count.
+- **Header:** the bell now prefetches; **WCAG 1.4.13 tooltips** on the icons; a **sticky header** with scroll padding for **2.4.11 Focus Not Obscured**.
+
+**My changes during the build:** the navy full-width filter card; 3-column ranges with Search and Clear on the right; accessible tooltips (I flagged the missing labels; they weren't an AA failure, but a real usability gap); the floating header, for consistency with street.co.uk; and alphabetical options from the API (done myself, tests first: `PropertyType::options()` now sorts by label).
+
+**Found in review:**
+- **The agent's report claimed two layout changes that weren't in the code.** The browser showed 2 columns and a left-aligned Search; the source confirmed it. I sent it back with the exact gap and checked the fix in both source and browser. A reminder that "the agent says done" isn't evidence.
+- The agent improved the axe helper mid-step to scan the whole document rather than one root element; earlier runs may have scanned less. Every page passes under the stricter scan.
+- **A coupling to note:** saved-search chips are made by splitting the plain-words description on " · ", because that page doesn't receive type labels. It works, but a change to the description format would change the chips. A typed criteria list from the backend would be cleaner.
+
+**Checked by me in Chrome:**
+- **Filter, then save:** clean `?region=Leeds`, "Leeds · Any price", "Search saved." announced, the button becomes "Already saved".
+- **Delete:** "1 of 20 saved", "Search deleted." announced, focus moves to the next search's "View homes".
+- **Alerts:** bell "Alerts, 1 unread", then on the page one GET and **exactly one PATCH**, the bell becomes "Alerts" while the card keeps "New"; the re-listed home shows "Back on the market" and "First alerted …".
+- **Layout:** 3-column ranges and right-aligned Search; the tooltip on keyboard focus; the header stays at the top after scrolling, with 80px of scroll padding for a 68px header.
+
+**More changes after using it in the browser:**
+- **Removed the search summary beside Save.** With many regions and types it ran across the row and repeated the filter card. I removed it, and the backend `searchDescription` prop and its two tests with it, rather than truncating it ("5 regions" with a tooltip was the first idea). Save now sits on the same row as the results count; the empty state checks for applied filters directly.
+- **One saved line:** "✓ Search criteria saved · View Saved Searches" replaced "Already saved" plus a separate success message, as a single polite live region.
+- **A "scroll jump" that wasn't one, and a focus bug that was.** I'd seen the page jump to the top after saving. Before changing anything, I measured: a real wheel-scroll and click showed scroll position 400 before and after. The jump came from the test tool scrolling to the element before clicking, not from the app. The same test showed a real problem: after saving, **focus fell to the page body**, because the pressed button is replaced. Now focus moves to "View Saved Searches", with a Vitest test (AAA) and a browser check.
+- **Device check (my request: mobile, iPad, desktop):** pages loaded into 375px and 768px frames, with the real window as desktop. No horizontal overflow on listings, filtered listings, saved searches or alerts at any size; the header stays one row; layouts reflow sensibly. **Observation for later:** on a phone the filter card is about 1.5 screens tall before the first home appears; a collapsible "Filters" control on small screens would help.
+- **Select labels, still open:** I asked whether the min/max labels were needed if the options read well. The AI pointed out that a `<select>` has no real placeholder: once a value is chosen, "£200,000" alone doesn't say min or max, which fails WCAG 3.3.2. It suggested putting "Min"/"Max" into the option text instead. **I chose to leave the visible labels as they are.**
+
+**End-to-end demo, then written up for reviewers.**
+- On my dev data: draft #146 (4 Logan Meadow, Bristol, £160k, 4 bed) set live wrote outbox message #187 and no alert. `outbox:relay` created alert #4 (`new_listing`, matched saved search #1, not my 1–2-bed search #3). The bell showed 1, and Alerts showed "New" / "New listing" / "Matched…". Viewing sent one PATCH and the badge cleared while "New" stayed.
+- I then had the home go under offer and back to live **without opening Alerts**, to see it arrive fresh: alert #5 `back_on_market`, unread.
+- I asked for a **"from a fresh install to an alert" walkthrough at the top of NOTES.md**. Every step was rehearsed on a separate empty SQLite database (seed, then go-live, then relay, giving 1 unread; then read, re-list and relay, giving `back_on_market`), so the instructions are tested, not just written. The rehearsal also caught a wrong command (`Listing::alerts()` doesn't exist) before it reached the notes.
+
+**Checks (re-run by me):** Vitest **74 passed** (9 files), PHP **185 passed** at **98.6%** (two fewer after removing the summary prop's tests), Pint, PHPStan 0 errors, build OK, no inline styles or arbitrary values.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 

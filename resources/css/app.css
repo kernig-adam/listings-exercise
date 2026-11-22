@@ -72,3 +72,41 @@
         outline-offset: 2px;
     }
 }
+
+/* Teal primary action on light surfaces (white on brand-700 is 7.5:1). */
+@utility btn-primary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-control bg-brand-700 px-5 text-sm font-semibold text-surface hover:bg-brand-800 focus-ring disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+/* Quieter action on light surfaces: teal outline, same size as the primary. */
+@utility btn-secondary {
+    @apply inline-flex min-h-11 items-center justify-center rounded-control border border-brand-700 bg-surface px-5 text-sm font-semibold text-brand-700 hover:bg-brand-50 focus-ring disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+/* The marketing-site CTA on the navy filter card: solid white, dark text, square corners (19:1). */
+@utility btn-inverse {
+    @apply inline-flex min-h-11 items-center justify-center bg-surface px-6 text-sm font-semibold text-navy hover:bg-brand-100 focus-ring-inverse disabled:opacity-60;
+}
+
+/* Underlined text link on cream or white (brand-700 is 7.0:1 on canvas). */
+@utility text-link {
+    @apply text-brand-700 underline underline-offset-4 hover:text-brand-900 focus-ring;
+}
+
+/* Same link on the navy card. */
+@utility text-link-inverse {
+    @apply text-surface underline underline-offset-4 hover:text-brand-100 focus-ring-inverse;
+}
+
+/* Small status label. Colours come from the element (text always carries the meaning). */
+@utility pill {
+    @apply inline-flex items-center rounded-pill px-2.5 py-0.5 text-xs font-semibold;
+}
+
+/* A filter chip wraps a visually hidden checkbox; the ring shows when that checkbox has keyboard focus. */
+@utility chip-focus {
+    &:has(:focus-visible) {
+        outline: 2px solid var(--color-brand-200);
+        outline-offset: 2px;
+    }
+}

@@ -48,7 +48,7 @@ Agents edit only; they never commit. Styling: Tailwind token classes only, no in
 
 ## Listings page
 
-- **Filters in a left panel** on desktop, behind a "Filters" button on mobile.
+- **Filters in a big navy card, full width across the top** of the page, clearly separate from the results below (echoing the marketing site's navy band). Filters are laid out in a responsive grid inside it, stacking on mobile. Everything inside must meet AA **on navy**: light text, light chips with a clear selected state, `focus-ring-inverse`, and inputs/selects legible on the dark card.
   - **Regions and property types:** pill-style chips over native checkboxes (`fieldset` + `legend`). Options from props (data-driven), never hard-coded.
   - **Price, bedrooms and bathrooms:** min/max **preset dropdowns** from props (`priceOptions`, `bedroomOptions`, `bathroomOptions`) ("No min" … "No max"). The max hides values below the chosen min. **P3:** a non-preset value in the URL (e.g. £180,000) appears as an extra, selected option.
   - The existing **"Search" button** applies filters to the URL. **Always comma-separated** (`region=Liverpool,Newcastle`), never `region[0]=` (the baseline found that form leaves the select blank while filtering).

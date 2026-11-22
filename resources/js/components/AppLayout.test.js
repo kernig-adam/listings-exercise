@@ -61,10 +61,20 @@ describe('AppLayout', () => {
         const wrapper = render();
 
         // Assert
-        const cluster = wrapper.get('a[href="/saved-searches"]').element.parentElement;
-        const names = [...cluster.children].map((el) => el.getAttribute('aria-label') ?? el.textContent.replace(/\s+/g, ' ').trim());
-        expect(names).toEqual(['Saved searches', 'Alerts', 'Signed in as Alex MorganAM']);
-        expect(cluster.lastElementChild.querySelector('[aria-hidden="true"]').textContent.trim()).toBe('AM');
+        const cluster = wrapper.get('a[href="/saved-searches"]').element.parentElement.parentElement;
+        const [saved, alerts, avatar] = [...cluster.children];
+        expect(saved.querySelector('a').getAttribute('aria-label')).toBe('Saved searches');
+        expect(alerts.querySelector('a').getAttribute('aria-label')).toBe('Alerts');
+        expect(avatar.querySelector('.sr-only').textContent).toBe('Signed in as Alex Morgan');
+        expect(avatar).toBe(cluster.lastElementChild);
+    });
+
+    it('floats the header above the content', () => {
+        // Arrange / Act
+        const header = render().get('header');
+
+        // Assert
+        expect(header.classes()).toEqual(expect.arrayContaining(['sticky', 'top-0', 'z-20']));
     });
 
     it('shows a bell link to alerts with an unread badge and accessible label', () => {
@@ -102,8 +112,8 @@ describe('AppLayout', () => {
 
         // Assert
         expect(wrapper.get('.sr-only:not(a)').text()).toBe('Signed in as Alex Morgan');
-        const initials = wrapper.get('span[aria-hidden="true"]:not(.logo-inverse)');
-        expect(initials.text()).toBe('AM');
+        const initials = wrapper.findAll('span[aria-hidden="true"]').find((el) => el.text() === 'AM');
+        expect(initials).toBeDefined();
         expect(wrapper.text()).not.toContain('Welcome back');
     });
 

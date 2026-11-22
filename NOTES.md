@@ -2,6 +2,52 @@
 
 The short version. The full, time-ordered working is in [PROCESS.md](PROCESS.md).
 
+## See an alert in about five minutes, from a fresh install
+
+Each step was rehearsed on an empty database. Run from the project folder.
+
+**1. Install and run** (the README's "Getting started", unchanged):
+
+```bash
+composer install
+npm install
+php artisan migrate --seed      # also creates a demo saved search: "Up to £400,000 · 2+ beds"
+php artisan serve               # terminal 1 → http://127.0.0.1:8000
+npm run dev                     # terminal 2
+```
+
+Open the site. The bell (top right) has no badge, and **Saved searches** (the bookmark icon) shows the demo search.
+
+**2. A new home goes live** (there's no listing-management screen, so use `tinker`). This takes an unlisted (draft) home that matches the demo search and publishes it:
+
+```bash
+php artisan tinker --execute="App\Models\Listing::where('status','draft')->where('price','<=',400000)->where('bedrooms','>=',2)->firstOrFail()->update(['status'=>'live','listed_at'=>now()]);"
+```
+
+The listing and its `listing.went_live` outbox message are written in one transaction. **No alert exists yet**: alerts are generated outside the request.
+
+**3. Run the relay** (the scheduler does this every minute; run it by hand to skip the wait):
+
+```bash
+php artisan outbox:relay
+```
+
+**4. See it:** refresh any page and the bell shows **1**. Open **Alerts**: the home appears with **"New"**, **"New listing"** and **"Matched: Up to £400,000 · 2+ beds"**. Viewing marks it read, so the badge clears, but the card keeps "New" for this visit.
+
+**5. Optional: a sale falls through.** Once you've viewed that alert, put the same home under offer and back to live, then relay again:
+
+```bash
+php artisan tinker --execute="App\Models\Alert::firstOrFail()->listing->update(['status'=>'under_offer']);"
+php artisan tinker --execute="App\Models\Alert::firstOrFail()->listing->update(['status'=>'live']);"
+php artisan outbox:relay
+```
+
+The bell shows **1** again, and Alerts shows that home once, with **"Back on the market"** and **"First alerted {date}"**. If you skip viewing the first alert, it's refreshed instead of duplicated (the anti-spam guard).
+
+**Also try:** save your own search from the listings page (pick filters, press Search, then **Save this search**), then put a home live that matches it. Homes that don't match any saved search create no alert.
+
+*Notes:* seeding is random, so if step 2 reports "No query results", run `php artisan migrate:fresh --seed` and try again. On Windows, `composer dev` doesn't work (see below); the two-terminal steps do. If port 8000 is taken, `php artisan serve` picks the next free port.
+
 ## Key decisions and trade-offs
 
 ### Setup
@@ -80,8 +126,10 @@ Decided in a second grilling session, focused on the UI.
 - **"Save this search" next to the results count,** with a plain-words summary of what will be saved. States: disabled with a hint when nothing is filtered, "Already saved ✓", and an inline success message (announced to screen readers) with a link to Saved searches.
 - **Deleting a saved search:** an inline two-step confirmation in place, with no browser dialog. Undo is noted for later.
 - **Alerts reuse the listing card,** with a "New" pill when unread, a "Matched: …" line, and a muted "No longer available" state with no link. The empty state explains alerts and links to saving a search.
-- **Mobile header:** the nav and greeting collapse behind an accessible "Menu" button (`aria-expanded`, closes on Escape). The logo and alerts count stay visible.
-- **Filters in a left-hand panel** beside the results on desktop (property-site standard, echoes Street's dashboard), collapsing to a "Filters" button on mobile.
+- **The header floats, like street.co.uk's,** staying at the top while the page scrolls, for consistency with Street's own site. A sticky header has an AA catch: WCAG 2.2's **2.4.11 Focus Not Obscured** fails if a keyboard user tabs to something the header then covers. So the page reserves scroll padding the height of the header, and focused elements and the skip-link target always land below it.
+- **Accessible tooltips on the header icons.** I noticed the bookmark, bell and avatar had no visible labels. Their accessible names were already in place for screen readers (so not an AA failure in itself), but a sighted user who doesn't recognise an icon got no hint. Rather than a `title` attribute (which doesn't show on keyboard focus or touch, and screen readers handle it inconsistently), the tooltips meet **WCAG 1.4.13**: they show on hover and keyboard focus, Escape dismisses them, you can move the pointer onto them, and they stay until you leave.
+- **Filter options arrive alphabetically from the API.** Regions already did (the query sorts them). Property types were coming in the enum's declaration order (Detached, Semi-detached, Terraced, Flat, Bungalow), so `PropertyType::options()` now sorts by label. The order is decided once, on the backend, and the UI renders what it receives, data-driven like the options themselves.
+- **Filters in a big navy card across the top,** with price, bedrooms and bathrooms in a three-column grid, and Search and Clear aligned to the right, clearly separating "what you're searching for" from the results below, and echoing the marketing site's navy band. (Originally planned as a left-hand panel; I changed it when reviewing the page, for stronger separation and one layout that works the same on mobile.)
 - **"View homes" on each saved search** opens the listings page with its filters. It's just the URL, since filters live in the query string.
 - **An empty result invites saving the search:** "No homes match yet. Save this search and we'll alert you when one does." That turns a dead end into capture, the moment the feature exists for.
 - **Consistent pagination:** Alerts and Saved searches both paginate at 15, the same as the listings page, using the existing `Pagination` component.
@@ -91,7 +139,8 @@ Decided in a second grilling session, focused on the UI.
 - **Dependency versions need updating.** `npm audit` flags a high-severity advisory in Vue's server renderer (fixed in 3.5.42). This app doesn't server-render, so it isn't exposed, and I didn't bump it mid-feature. On a real project I'd keep dependencies current on a schedule (Dependabot or Renovate, see "With more time"), rather than leave it to whoever notices an audit warning.
 - **Well-structured semantic HTML:** each element means what the content is. Landmarks (`header`, `nav`, `main`, `aside`), ordered headings, lists for results, saved searches and alerts, `article` cards, buttons for actions and links for navigation, labelled forms with `fieldset`/`legend`, `dl` for criteria, `time` for dates, and ARIA only where native HTML falls short. It's the foundation of accessibility, and tests that query by role enforce it.
 - **Decided after the product owner's review and the RUM baseline (P1–P8):**
-  - **The current search's summary comes from the backend** (the same `description()` as saved searches), so Vue never re-implements it.
+  - **No summary text next to Save on the listings page.** I first had the backend send a plain-words summary of the current search to show beside the Save button. Seeing it in the browser, with five regions and five types it ran across the whole row, and it only repeated what the filter card already shows. I removed it, and the backend prop with it, rather than abbreviating it. The Save button now sits on the same row as the results count. Saved searches still get their plain-words description, where it's the only way to recognise a search.
+  - **Once saved, one line: "✓ Search criteria saved · View Saved Searches",** and keyboard focus moves to that link, because the Save button the user just pressed disappears and focus would otherwise drop to the page body. This replaced a separate "Already saved" label plus a "Search saved. View saved searches" message: one clear confirmation that also says where to find it, announced to screen readers.
   - **Save saves the filters actually applied** (the URL), not half-edited panel values, so what's saved matches the results on screen and the "Already saved" check.
   - **A non-preset price or bedroom value from a link shows as an extra, selected option** in its dropdown, so the control never misrepresents the filter that's actually applied.
   - **Honest copy: "We'll add new matching homes to your Alerts."** Alerts are in-app only, and there's no backfill, so "We'll alert you" would imply email or push we don't send, and that older homes will arrive. (I first chose "We'll alert you", then changed my mind: it's a trust risk Support has already flagged.)

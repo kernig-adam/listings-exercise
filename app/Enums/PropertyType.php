@@ -12,16 +12,21 @@ enum PropertyType: string
 
     /**
      * Value/label pairs for building a select. Keeps the option list in one
-     * place rather than duplicated in the front end.
+     * place rather than duplicated in the front end. Sorted by label so the
+     * UI lists them alphabetically, independent of the order cases are declared.
      *
      * @return list<array{value: string, label: string}>
      */
     public static function options(): array
     {
-        return array_map(
+        $options = array_map(
             fn (self $type) => ['value' => $type->value, 'label' => $type->label()],
             self::cases(),
         );
+
+        usort($options, fn (array $a, array $b) => strcmp($a['label'], $b['label']));
+
+        return $options;
     }
 
     public function label(): string
