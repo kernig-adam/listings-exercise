@@ -47,19 +47,12 @@ npm run build
 
 Write the failing test first for any behaviour change (matching, scoping to the user, dedup). Do not claim a task is done without running the checks and showing the output.
 
-## Laravel Boost
+## Docs and real state
 
-Boost is a dev MCP server + AI guidelines. Install once:
+Laravel Boost is **not** used in this exercise, because it would add a dependency the codebase doesn't have (see `NOTES.md`). Instead:
 
-```bash
-composer require laravel/boost --dev
-php artisan boost:install     # choose Claude Code; writes .mcp.json, boost.json, guidelines
-```
-
-- Boost owns only the `<laravel-boost-guidelines>` block in this file. Write project rules **outside** that block.
-- Use its `search-docs` tool for Laravel/Inertia/Vue questions before guessing at an API.
-- Use `database-schema`, `database-query`, `last-error`, `read-log-entries` to check real state instead of assuming it.
-- Refresh after dependency changes: `php artisan boost:update`.
+- Check Laravel, Inertia and Vue APIs against current docs (Context7) before using them. Don't guess.
+- Check real state rather than assuming it: `php artisan migrate:status`, `php artisan route:list`, `php artisan tinker`, and `storage/logs/laravel.log`.
 
 ## Workflow: worktrees and small tasks
 

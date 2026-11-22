@@ -38,7 +38,8 @@ Kept up to date as tools are added, so the setup can be reproduced and revisited
 | GitHub CLI (`gh`) | Local | PRs against my own fork. |
 | GitHub Actions | CI | Existing pipeline; I added a coverage threshold. |
 | Docker Desktop | Local | Used once, for the baseline in entry 4, before I had PHP. Not part of the repo. |
-| Laravel Boost | Local | Planned: MCP server and guidelines so the AI checks real docs and schema. |
+| ~~Laravel Boost~~ | — | Dropped (entry 8). I'd use it on a real project, but it adds a dependency this codebase doesn't have. |
+| Context7 (MCP) | Local | Current library docs for the AI, in place of Boost's doc search. Not part of the repo. |
 
 ---
 
@@ -214,6 +215,16 @@ Every commit Claude makes now starts with `CLAUDE - `, so any commit I make in b
 - Any `gh pr create` or `gh pr edit` that would tick the attestation box is blocked. Only a human ticks it.
 
 **Checks:** four bad cases were blocked with a clear reason (missing section, no label, box ticked on create, box ticked on edit). A valid PR passed through to the full quality gate, which passed.
+
+**Reviewed:** *pending*
+
+### 8. Clean baseline: feature branch, NOTES.md, Boost dropped
+
+**Branch:** `claude/quality-gate` → PR into `feature/saved-search-alerts` · **Model:** Opus 5.5 (main session)
+
+- **Feature branch:** `feature/saved-search-alerts` is created from an untouched `main`. All the setup (entries 2–8) reaches it through one PR (#1), checked by CI and attested by me. Once that merges, the feature branch is the clean baseline every feature task starts from. The hand-back PR (feature → `main`) then shows setup and feature together.
+- **NOTES.md started.** It should have existed from the start, because the brief asks for decisions to be recorded as they're made. It now holds the setup decisions, and the feature decisions will go in as they're made.
+- **Laravel Boost dropped.** It was planned (entry 2) but never installed. I'd use it on a real project: its doc search and schema/log tools keep an AI grounded in the real app. Here it adds a dev dependency and generated files the codebase doesn't have, which is the same reason I dropped Sail. CLAUDE.md now tells the AI to check current docs (Context7) and real state (`artisan` commands, logs) instead.
 
 **Reviewed:** *pending*
 
