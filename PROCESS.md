@@ -56,7 +56,7 @@ Before planning anything, I read the brief and the codebase so the feature fits 
 | Area | What's there |
 | --- | --- |
 | Stack | Laravel 13, PHP 8.4, SQLite, Inertia v3, Vue 3.5, Tailwind v4, Vite |
-| Checks | PHPUnit 12, Pint, Larastan level 5 (empty baseline), `npm run build`; all four run in CI |
+| Checks | PHPUnit 12, Pint, Larastan level 5 (empty baseline), `npm run build`; all four run in CI (`ci.yml`). *Correction, found in entry 4: there are four more workflow files I missed here.* |
 | Domain | `Branch` (name, region) has many `Listing`; `ListingStatus` and `PropertyType` are backed enums |
 | HTTP | `ListingController` → `ListingIndexRequest` (validation) → `ListingResource` (props) → `Inertia::render` |
 | Front end | `resources/js/pages/Listings/{Index,Show}.vue`; filters stay in the query string |
@@ -155,7 +155,13 @@ To be clear: **I would have taken the Docker approach.** I'm running native PHP 
 - PHP 8.6 is still first on the machine PATH, so a plain `php` resolves to 8.6 until the PATH is fixed. The hook catches this and blocks.
 - CI uses Node 20, local is Node 24.
 
-**Still to do:** push, and confirm CI is green with the coverage threshold.
+**CI result** ([draft PR #1](https://github.com/kernig-adam/listings-exercise/pull/1), opened only to run CI): all green. The `ci.yml` job measured **93.2%** with PCOV 1.0.12, the same driver and the same number as local, so the 90% default holds.
+
+**Something my assessment missed.** In entry 1 I listed only `ci.yml`, but the PR also ran checks from four other workflows. They look like leftovers from the Laravel skeleton:
+- `tests.yml` runs the suite again on PHP 8.4 and 8.5 on **every push to any branch**, on every PR, and on a schedule. That duplicates `ci.yml` and roughly doubles CI usage.
+- `issues.yml`, `pull-requests.yml` and `update-changelog.yml` call shared workflows from the `laravel/.github` org. They're meant for the `laravel/laravel` repo, not this app.
+
+I haven't changed them. The brief says to flag a pattern I think is wrong rather than quietly work around it. My recommendation: delete all four and keep `ci.yml` as the single pipeline, adding a PHP version matrix there if we want 8.5 too. That would be its own small task once agreed.
 
 **Reviewed:** *pending*
 
