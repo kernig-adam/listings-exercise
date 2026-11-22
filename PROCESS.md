@@ -328,5 +328,31 @@ The product owner agent reviewed the backend task against buyer value before any
 
 **Reviewed:** *pending*
 
+### 15. Task 1, step 2: data layer
+
+**Branch:** `feature/saved-search-alerts` · **Agent:** `data` (Sonnet), reviewed by the main session (Opus)
+
+**Built by the data agent:**
+- 3 migrations: `saved_searches` plus region and type join tables; `outbox_messages`; `alerts` plus `alert_saved_search`.
+- The `AlertReason` enum.
+- Models `SavedSearch`, `SavedSearchRegion`, `SavedSearchPropertyType`, `Alert` (unread scope), `OutboxMessage` (unsent scope), plus `User` relationships.
+- Factories with states, and 17 data-invariant tests.
+
+Key constraints:
+- Alerts are unique per user and go-live event (idempotent reprocessing, re-listings allowed).
+- Deleting a saved search removes only its alert links.
+- `outbox_message_id` is restrict-on-delete, so pruning the outbox later must be a deliberate decision.
+- Every index carries a comment naming the query it serves.
+
+**Found in review, and fixed:** the agent claimed `saved_searches.user_id` was "indexed by the FK". That's true on MySQL only: SQLite and PostgreSQL don't auto-index foreign keys, so listing or counting a user's searches would scan the table. I added an explicit index with a comment explaining why. It's exactly the kind of engine difference the data agent is meant to catch, and a reminder to review agent output rather than trust its report.
+
+**Process slip, recorded honestly:** the agent wrote the migrations and models *before* the tests, against CLAUDE.md's "failing test first" rule. It said so in its report. The tests do assert real behaviour (constraints, cascades, casts), but they weren't written first. For the backend step I'll hold the agent to writing the failing tests first.
+
+**Portability notes from the agent (for the backend step):** region case differs by engine (normalise it), SQLite doesn't enforce unsigned integers (validation must reject negatives), and the JSON payload must only be read through its cast, never queried.
+
+**Checks (re-run by me after the fix):** `migrate:fresh --seed` OK; 33 tests passed, 162 assertions, **94.9%** coverage (the new models and enum at 100%); Pint passed; PHPStan 0 errors.
+
+**Reviewed:** *pending*
+
 <!-- New entries go below, in order. Each one: branch, what was done and why, checks run and results, what changed after review, then "**Reviewed:** *pending*" for Adam to sign off. -->
 
